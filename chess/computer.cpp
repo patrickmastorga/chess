@@ -6,6 +6,8 @@
 #include <sstream>
 #include <cctype>
 
+#include "precomputed.hpp"
+
 typedef std::uint_fast8_t uint8;
 typedef std::int_fast8_t int8;
 typedef std::uint_fast16_t uint16;
@@ -25,19 +27,7 @@ constexpr uint8 QUEEN =  0b101;
 constexpr uint8 KING =   0b110;
 
 /**
- * @brief Value of every peice (index is peice id) at every index [0, 63] -> [a1, h8]
- * Used for evaluating a position
- */
-const int16 standardPeiceEvaluationValue[15][64];
-
-/**
- * @brief Value of every peice (index is peice id) at every index [0, 63] -> [a1, h8]
- * Used for evaluating a position
- */
-const int16 endgamePeiceEvaluationValue[15][64];
-
-/**
- * @brief struct for containing info about the current state of the chess game
+ * struct for containing info about the current state of the chess game
  */
 struct Board
 {
@@ -48,65 +38,65 @@ struct Board
     // DATA
 
     /**
-     * @brief color and peice type at every square (index [0, 63] -> [a1, h8])
+     * color and peice type at every square (index [0, 63] -> [a1, h8])
      */
     uint8 peices[64];
 
     /**
-     * @brief the number of attacks and pawn attacks from white and black (index 0 and 1) at every square (index [0, 63] -> [a1, h8])
+     * the number of attacks and pawn attacks from white and black (index 0 and 1) at every square (index [0, 63] -> [a1, h8])
      * |2 bits pawn attacks|6 bits total attacks|
      */
     uint8 attacks[2][64];
 
     /**
-     * @brief flag at every square (index [0, 63] -> [a1, h8]) for white and black (index 0 and 1)
+     * flag at every square (index [0, 63] -> [a1, h8]) for white and black (index 0 and 1)
      */
     uint8 flags[2][64];
 
     /**
-     * @brief zobrist hash of the current position
+     * zobrist hash of the current position
      */
     uint64 zobristHash;
 
     /**
-     * @brief total half moves since game start (half move is one player taking a turn)
+     * total half moves since game start (half move is one player taking a turn)
      */
     uint16 totalHalfmoves;
 
     /**
-     * @brief whether or not the white or black (index 0 and 1) king is in check
+     * whether or not the white or black (index 0 and 1) king is in check
      */
     bool inCheck[2];
 
     /**
-     * @brief whether or not the black/white king is in a double check
+     * whether or not the black/white king is in a double check
      */
     bool doubleCheck;
 
     /**
-     * @brief whether or not kingside castling is still allowed for white or black (index 0 and 1)
+     * whether or not kingside castling is still allowed for white or black (index 0 and 1)
      */
     bool kingsideCastlingAvailable[2];
 
     /**
-     * @brief whether or not queenside castling is still allowed for white or black (index 0 and 1)
+     * whether or not queenside castling is still allowed for white or black (index 0 and 1)
      */
     bool queensideCastlingAvailable[2];
 
     /**
-     * @brief index of square over which a pawn has just moves two squares over
+     * index of square over which a pawn has just moves two squares over
      */
     uint8 eligibleForEnPassant;
 
     /**
-     * @brief number of half moves since pawn move or capture (half move is one player taking a turn) (used for 50 move rule)
+     * number of half moves since pawn move or capture (half move is one player taking a turn) (used for 50 move rule)
      */
     uint8 halfmovesSincePawnMoveOrCapture;
 
     // CONSTRUCTORS
 
     /**
-     * @brief Construct a new Board object from fen string
+     * Construct a new Board object from fen string
      * @param fenString string in Forsyth–Edwards Notation
      */
     Board(const std::string &fenString)
@@ -267,19 +257,232 @@ struct Board
         // INITIALIZE COMPUTER FLAGS
         // checks, attacks, flags
 
+        // intialize attacks
+        for (uint8 i = 0; i < 64; ++i) {
+            uint8 color = peices[i] / (1 << 3);
+
+            switch (peices[i] % (1 << 3)) {
+                case PAWN:
+                    uint8 dir = 8 - 16 * color;
+                    if (i % 8 != 0) {
+                        ++attacks[color][i + dir - 1];
+                    }
+                    if (i % 8 != 7) {
+                        ++attacks[color][i + dir + 1];
+                    }
+                    break;
+
+                case KNIGHT:
+                    for (int j = 1; j < KNIGHT_MOVES[i][0]; ++j) {
+                        ++attacks[color][i + KNIGHT_MOVES[i][j]];
+                    }
+                    break;
+
+                case BISHOP:
+                    uint8 file = i % 8;
+                    uint8 rank = i / 8;
+                    uint8 ifile = 7 - file;
+                    uint8 irank = 7 - rank;
+                    uint8 bl = std::min(rank, file);
+                    uint8 br = std::min(rank, ifile);
+                    uint8 fl = std::min(irank, file);
+                    uint8 fr = std::min(irank, ifile);
+
+                    uint8 target = i;
+                    for (int j = 0; j < bl; ++j) {
+                        target -= 9;
+                        ++attacks[color][target];
+                        if (peices[target]) {
+                            break;
+                        }
+                    }
+                    target = i;
+                    for (int j = 0; j < br; ++j) {
+                        target -= 7;
+                        ++attacks[color][target];
+                        if (peices[target]) {
+                            break;
+                        }
+                    }
+                    target = i;
+                    for (int j = 0; j < fl; ++j) {
+                        target += 7;
+                        ++attacks[color][target];
+                        if (peices[target]) {
+                            break;
+                        }
+                    }
+                    target = i;
+                    for (int j = 0; j < fr; ++j) {
+                        target += 9;
+                        ++attacks[color][target];
+                        if (peices[target]) {
+                            break;
+                        }
+                    }
+                    break;
+
+                case ROOK:
+                    uint8 file = i % 8;
+                    uint8 rank = i / 8;
+                    uint8 ifile = 7 - file;
+                    uint8 irank = 7 - rank;
+
+                    uint8 target = i;
+                    for (int j = 0; j < rank; ++j) {
+                        target -= 8;
+                        ++attacks[color][target];
+                        if (peices[target]) {
+                            break;
+                        }
+                    }
+                    target = i;
+                    for (int j = 0; j < file; ++j) {
+                        target -= 1;
+                        ++attacks[color][target];
+                        if (peices[target]) {
+                            break;
+                        }
+                    }
+                    target = i;
+                    for (int j = 0; j < irank; ++j) {
+                        target += 8;
+                        ++attacks[color][target];
+                        if (peices[target]) {
+                            break;
+                        }
+                    }
+                    target = i;
+                    for (int j = 0; j < ifile; ++j) {
+                        target += 1;
+                        ++attacks[color][target];
+                        if (peices[target]) {
+                            break;
+                        }
+                    }
+                    break;
+                
+                case QUEEN:
+                    uint8 file = i % 8;
+                    uint8 rank = i / 8;
+                    uint8 ifile = 7 - file;
+                    uint8 irank = 7 - rank;
+                    uint8 bl = std::min(rank, file);
+                    uint8 br = std::min(rank, ifile);
+                    uint8 fl = std::min(irank, file);
+                    uint8 fr = std::min(irank, ifile);
+
+                    uint8 target = i;
+                    for (int j = 0; j < bl; ++j) {
+                        target -= 9;
+                        ++attacks[color][target];
+                        if (peices[target]) {
+                            break;
+                        }
+                    }
+                    target = i;
+                    for (int j = 0; j < br; ++j) {
+                        target -= 7;
+                        ++attacks[color][target];
+                        if (peices[target]) {
+                            break;
+                        }
+                    }
+                    target = i;
+                    for (int j = 0; j < fl; ++j) {
+                        target += 7;
+                        ++attacks[color][target];
+                        if (peices[target]) {
+                            break;
+                        }
+                    }
+                    target = i;
+                    for (int j = 0; j < fr; ++j) {
+                        target += 9;
+                        ++attacks[color][target];
+                        if (peices[target]) {
+                            break;
+                        }
+                    }
+                    target = i;
+                    for (int j = 0; j < rank; ++j) {
+                        target -= 8;
+                        ++attacks[color][target];
+                        if (peices[target]) {
+                            break;
+                        }
+                    }
+                    target = i;
+                    for (int j = 0; j < file; ++j) {
+                        target -= 1;
+                        ++attacks[color][target];
+                        if (peices[target]) {
+                            break;
+                        }
+                    }
+                    target = i;
+                    for (int j = 0; j < irank; ++j) {
+                        target += 8;
+                        ++attacks[color][target];
+                        if (peices[target]) {
+                            break;
+                        }
+                    }
+                    target = i;
+                    for (int j = 0; j < ifile; ++j) {
+                        target += 1;
+                        ++attacks[color][target];
+                        if (peices[target]) {
+                            break;
+                        }
+                    }
+                    break;
+                
+                case KING:
+                    bool l = i % 8;
+                    bool r = i % 8 < 7;
+                    bool b = i / 8;
+                    bool f = i / 8 < 7;
+
+                    if (l) {
+                        ++attacks[color][i - 1];
+                    }
+                    if (r) {
+                        ++attacks[color][i + 1];
+                    }
+                    if (b) {
+                        ++attacks[color][i - 8];
+                    }
+                    if (f) {
+                        ++attacks[color][i + 8];
+                    }
+                    if (b && l) {
+                        ++attacks[color][i - 9];
+                    }
+                    if (b && r) {
+                        ++attacks[color][i - 7];
+                    }
+                    if (f && l) {
+                        ++attacks[color][i + 7];
+                    }
+                    if (f && l) {
+                        ++attacks[color][i + 9];
+                    }
+            }
+        }
 
         // INITIALIZE ZOBRIST HASH
     }
     
     /**
-     * @brief Construct a new Board object with the starting position
+     * Construct a new Board object with the starting position
      */
     Board() : Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {}
 
     // METHODS
 
     /**
-     * @brief update the board based on the inputted move
+     * update the board based on the inputted move
      */
     void makeMove(const Move &move)
     {
@@ -287,7 +490,7 @@ struct Board
     }
 
     /**
-     * @brief update the board based on the inputted move
+     * update the board based on the inputted move
      */
     void unmakeMove(const Move &move)
     {
@@ -317,7 +520,7 @@ struct Board
 
 
 /**
- * @brief struct for containing info about a move
+ * struct for containing info about a move
  */
 struct Move
 {
@@ -346,7 +549,7 @@ struct Move
 };
 
 /**
- * @brief Generates all legal moves for a goven position and a given color
+ * Generates all legal moves for a goven position and a given color
  * @param flags only generate moves with the given flags
  * @return std::vector<Move> of legal moves for a position
  */
