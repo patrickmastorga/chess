@@ -31,47 +31,12 @@ constexpr uint8 KING =   0b110;
  */
 struct Board
 {
-    // FLAGS
-
-    static constexpr uint8 PINNED = 0b001;
-
-    // DATA
+    // CHESS DATA
 
     /**
      * color and peice type at every square (index [0, 63] -> [a1, h8])
      */
     uint8 peices[64];
-
-    /**
-     * the number of attacks and pawn attacks from white and black (index 0 and 1) at every square (index [0, 63] -> [a1, h8])
-     * |2 bits pawn attacks|6 bits total attacks|
-     */
-    uint8 attacks[2][64];
-
-    /**
-     * flag at every square (index [0, 63] -> [a1, h8]) for white and black (index 0 and 1)
-     */
-    uint8 flags[2][64];
-
-    /**
-     * zobrist hash of the current position
-     */
-    uint64 zobristHash;
-
-    /**
-     * total half moves since game start (half move is one player taking a turn)
-     */
-    uint16 totalHalfmoves;
-
-    /**
-     * whether or not the white or black (index 0 and 1) king is in check
-     */
-    bool inCheck[2];
-
-    /**
-     * whether or not the black/white king is in a double check
-     */
-    bool doubleCheck;
 
     /**
      * whether or not kingside castling is still allowed for white or black (index 0 and 1)
@@ -84,14 +49,46 @@ struct Board
     bool queensideCastlingAvailable[2];
 
     /**
-     * index of square over which a pawn has just moves two squares over
+     * file where a pawn has just moves two squares over
      */
-    uint8 eligibleForEnPassant;
+    int8 eligibleEnPassantFile;
 
     /**
      * number of half moves since pawn move or capture (half move is one player taking a turn) (used for 50 move rule)
      */
     uint8 halfmovesSincePawnMoveOrCapture;
+
+    // COMPUTER DATA
+
+    /**
+     * the number of attacks and pawn attacks from white and black (index 0 and 1) at every square (index [0, 63] -> [a1, h8])
+     * |2 bits pawn attacks|6 bits total attacks|
+     */
+    uint8 attacks[2][64];
+
+    /**
+     * flag at every square (index [0, 63] -> [a1, h8]) for white and black (index 0 and 1)
+     */
+    uint8 flags[2][64];
+
+    // flags
+    static constexpr uint8 PINNED =   0b001;
+    static constexpr uint8 CHECKING = 0b010;
+
+    /**
+     * zobrist hash of the current position
+     */
+    uint64 zobristHash;
+
+    /**
+     * total half moves since game start (half move is one player taking a turn)
+     */
+    uint16 totalHalfmoves;
+
+    /**
+     * Index of the white and black king (index 0 and 1)
+     */
+    uint8 kingIndex[2];
 
     // CONSTRUCTORS
 
@@ -102,10 +99,12 @@ struct Board
     Board(const std::string &fenString)
     {
         // INITIALIZE GAME DATA
-        // peice data, castling data, en-passant, move clocks
+        // peice data, castling data, en-passant, move clocks, zobrist hash
 
         std::istringstream fenStringStream(fenString);
         std::string peicePlacementData, activeColor, castlingAvailabilty, enPassantTarget, halfmoveClock, fullmoveNumber;
+
+        zobristHash = 0;
         
         // Get peice placement data from fen string
         if (!std::getline(fenStringStream, peicePlacementData, ' ')) {
@@ -183,6 +182,7 @@ struct Board
         } else if (activeColor == "b") {
             // Black is to move
             totalHalfmoves = 1;
+            zobristHash ^= ZOBRIST_TURN_KEY;
         
         } else {
             // active color can only be "wb"
@@ -199,7 +199,8 @@ struct Board
         kingsideCastlingAvailable[1] = false;
         queensideCastlingAvailable[0] = false;
         queensideCastlingAvailable[1] = false;
-        for (char c : peicePlacementData) {
+
+        for (char c : castlingAvailabilty) {
             if (c != '-' && !std::isalpha(c)) {
                 throw std::invalid_argument("Unrecognised charecter in FEN castling availability");
             }
@@ -209,10 +210,12 @@ struct Board
                 case 'K':
                 case 'k':
                     kingsideCastlingAvailable[color] = true;
+                    zobristHash ^= ZOBRIST_KINGSIDE_CASTLING_KEYS[color];
                     break;
                 case 'Q':
                 case 'q':
                     queensideCastlingAvailable[color] = true;
+                    zobristHash ^= ZOBRIST_QUEENSIDE_CASTLING_KEYS[color];
                     break;
                 default:
                     throw std::invalid_argument("Unrecognised alpha char in FEN castling availability data!");
@@ -226,7 +229,8 @@ struct Board
 
         if (enPassantTarget != "-") {
             try {
-                enPassantTarget = algebraicNotationToBoardIndex(enPassantTarget);
+                eligibleEnPassantFile = algebraicNotationToBoardIndex(enPassantTarget) % 8;
+                zobristHash ^= ZOBRIST_EN_PASSANT_KEYS[eligibleEnPassantFile];
             } catch (const std::invalid_argument &e) {
                 throw std::invalid_argument(std::string("Invalid FEN en passant target! ") + e.what());
             }
@@ -255,11 +259,12 @@ struct Board
         }
 
         // INITIALIZE COMPUTER FLAGS
-        // checks, attacks, flags
-
-        // intialize attacks
+        // attacks, flags, zobrist hash
+        
         for (uint8 i = 0; i < 64; ++i) {
             uint8 color = peices[i] / (1 << 3);
+
+            zobristHash ^= ZOBRIST_PEICE_KEYS[color][peices[i] % (1 << 3)][i];
 
             switch (peices[i] % (1 << 3)) {
                 case PAWN:
@@ -273,8 +278,8 @@ struct Board
                     break;
 
                 case KNIGHT:
-                    for (int j = 1; j < KNIGHT_MOVES[i][0]; ++j) {
-                        ++attacks[color][i + KNIGHT_MOVES[i][j]];
+                    for (uint8 j = 1; j < KNIGHT_MOVES[i][0]; ++j) {
+                        ++attacks[color][KNIGHT_MOVES[i][j]];
                     }
                     break;
 
@@ -439,39 +444,157 @@ struct Board
                     break;
                 
                 case KING:
-                    bool l = i % 8;
-                    bool r = i % 8 < 7;
-                    bool b = i / 8;
-                    bool f = i / 8 < 7;
+                    uint8 enemy = !color;
+                    uint8 file = i % 8;
+                    uint8 rank = i / 8;
+                    uint8 ifile = 7 - file;
+                    uint8 irank = 7 - rank;
+                    uint8 bl = std::min(rank, file);
+                    uint8 br = std::min(rank, ifile);
+                    uint8 fl = std::min(irank, file);
+                    uint8 fr = std::min(irank, ifile);
 
-                    if (l) {
+                    if (file) {
                         ++attacks[color][i - 1];
                     }
-                    if (r) {
+                    if (ifile) {
                         ++attacks[color][i + 1];
                     }
-                    if (b) {
+                    if (rank) {
                         ++attacks[color][i - 8];
                     }
-                    if (f) {
+                    if (irank) {
                         ++attacks[color][i + 8];
                     }
-                    if (b && l) {
+                    if (bl) {
                         ++attacks[color][i - 9];
                     }
-                    if (b && r) {
+                    if (br) {
                         ++attacks[color][i - 7];
                     }
-                    if (f && l) {
+                    if (fl) {
                         ++attacks[color][i + 7];
                     }
-                    if (f && l) {
+                    if (fr) {
                         ++attacks[color][i + 9];
+                    }
+
+                    kingIndex[color] = i;
+
+                    // initialize pin + checking flags
+
+                    for (int j = 1; j < KNIGHT_MOVES[i][0]; ++j) {
+                        if (peices[KNIGHT_MOVES[i][j]] == enemy + KNIGHT) {
+                            flags[color][KNIGHT_MOVES[i][j]] |= CHECKING;
+                        }
+                    }
+
+                    uint8 target = i;
+                    uint8 blocked = 0;
+                    for (int j = 0; j < bl && blocked < 2; ++j) {
+                        target -= 9;
+                        if (peices[target]) {
+                            if (peices[target] == enemy + BISHOP || peices[target] == enemy + QUEEN) {
+                                for (int k = i - 9; k <= target; k -= 9) {
+                                    flags[color][k] |= blocked ? PINNED : CHECKING;
+                                }
+                            }
+                            ++blocked;
+                        }
+                    }
+                    target = i;
+                    blocked = 0;
+                    for (int j = 0; j < br && blocked < 2; ++j) {
+                        target -= 7;
+                        if (peices[target]) {
+                            if (peices[target] == enemy + BISHOP || peices[target] == enemy + QUEEN) {
+                                for (int k = i - 7; k <= target; k -= 7) {
+                                    flags[color][k] |= blocked ? PINNED : CHECKING;
+                                }
+                            }
+                            ++blocked;
+                        }
+                    }
+                    target = i;
+                    blocked = 0;
+                    for (int j = 0; j < fl && blocked < 2; ++j) {
+                        target += 7;
+                        if (peices[target]) {
+                            if (peices[target] == enemy + BISHOP || peices[target] == enemy + QUEEN) {
+                                for (int k = i + 7; k <= target; k += 7) {
+                                    flags[color][k] |= blocked ? PINNED : CHECKING;
+                                }
+                            }
+                            ++blocked;
+                        }
+                    }
+                    target = i;
+                    blocked = 0;
+                    for (int j = 0; j < fr && blocked < 2; ++j) {
+                        target += 9;
+                        if (peices[target]) {
+                            if (peices[target] == enemy + BISHOP || peices[target] == enemy + QUEEN) {
+                                for (int k = i + 9; k <= target; k += 9) {
+                                    flags[color][k] |= blocked ? PINNED : CHECKING;
+                                }
+                            }
+                            ++blocked;
+                        }
+                    }
+                    target = i;
+                    blocked = 0;
+                    for (int j = 0; j < rank && blocked < 2; ++j) {
+                        target -= 8;
+                        if (peices[target]) {
+                            if (peices[target] == enemy + ROOK || peices[target] == enemy + QUEEN) {
+                                for (int k = i - 8; k <= target; k -= 8) {
+                                    flags[color][k] |= blocked ? PINNED : CHECKING;
+                                }
+                            }
+                            ++blocked;
+                        }
+                    }
+                    target = i;
+                    blocked = 0;
+                    for (int j = 0; j < file && blocked < 2; ++j) {
+                        target -= 1;
+                        if (peices[target]) {
+                            if (peices[target] == enemy + ROOK || peices[target] == enemy + QUEEN) {
+                                for (int k = i - 1; k <= target; k -= 1) {
+                                    flags[color][k] |= blocked ? PINNED : CHECKING;
+                                }
+                            }
+                            ++blocked;
+                        }
+                    }
+                    target = i;
+                    blocked = 0;
+                    for (int j = 0; j < irank && blocked < 2; ++j) {
+                        target += 8;
+                        if (peices[target]) {
+                            if (peices[target] == enemy + ROOK || peices[target] == enemy + QUEEN) {
+                                for (int k = i + 8; k <= target; k += 8) {
+                                    flags[color][k] |= blocked ? PINNED : CHECKING;
+                                }
+                            }
+                            ++blocked;
+                        }
+                    }
+                    target = i;
+                    blocked = 0;
+                    for (int j = 0; j < ifile && blocked < 2; ++j) {
+                        target += 1;
+                        if (peices[target]) {
+                            if (peices[target] == enemy + ROOK || peices[target] == enemy + QUEEN) {
+                                for (int k = i + 1; k <= target; k += 1) {
+                                    flags[color][k] |= blocked ? PINNED : CHECKING;
+                                }
+                            }
+                            ++blocked;
+                        }
                     }
             }
         }
-
-        // INITIALIZE ZOBRIST HASH
     }
     
     /**
@@ -511,7 +634,7 @@ struct Board
         uint8 rank = algebraic[1] - '1';
 
         if (file < 0 || file > 7 || rank < 0 || rank > 7) {
-            throw std::invalid_argument("Algebraic notation should be in the form [a-g][1-8]!");
+            throw std::invalid_argument("Algebraic notation should be in the form [a-h][1-8]!");
         }
 
         return (rank - '1') * 8 + (file - 'a');
@@ -542,10 +665,11 @@ struct Move
     }
 
     // FLAGS
-    static constexpr uint8 NONE       = 0b000;
-    static constexpr uint8 CAPTURE    = 0b001;
-    static constexpr uint8 PROMOTION  = 0b010;
-    static constexpr uint8 EN_PASSANT = 0b100;
+    static constexpr uint8 NONE       = 0b0000;
+    static constexpr uint8 CAPTURE    = 0b0001;
+    static constexpr uint8 PROMOTION  = 0b0010;
+    static constexpr uint8 CHECK  =     0b0100;
+    static constexpr uint8 EN_PASSANT = 0b1000;
 };
 
 /**
@@ -557,5 +681,57 @@ static std::vector<Move> generateLegalMoves(const Board &board, uint8 flags=Move
 {
     // TODO generate legal moves
 }
+
+/*
+
+TODO REGULAR SEARCH
+
+TODO ALPHA BETA SEARCH WITH MOVE ORDERING
+
+TODO ALPHA BETA SEARCH WITH TRANSPOSITION TABLE
+
+function alpha_beta_search(node, depth, alpha, beta):
+    if depth == 0 or node is a terminal node:
+        return evaluate(node)
+
+    transposition_entry = transposition_table_lookup(node)
+    if transposition_entry is not empty and transposition_entry.depth >= depth:
+        if transposition_entry.flag == EXACT:
+            return transposition_entry.value
+        if transposition_entry.flag == LOWER_BOUND:
+            alpha = max(alpha, transposition_entry.value)
+        else:  # transposition_entry.flag == UPPER_BOUND
+            beta = min(beta, transposition_entry.value)
+
+        if alpha >= beta:
+            return transposition_entry.value  # Transposition table cutoff
+
+    if maximizing_player(node):
+        value = -infinity
+        for child in generate_moves(node):
+            value = max(value, alpha_beta_search(child, depth - 1, alpha, beta))
+            alpha = max(alpha, value)
+            if alpha >= beta:
+                break  # Beta cutoff
+    else:  # minimizing player
+        value = infinity
+        for child in generate_moves(node):
+            value = min(value, alpha_beta_search(child, depth - 1, alpha, beta))
+            beta = min(beta, value)
+            if alpha >= beta:
+                break  # Alpha cutoff
+
+    store_transposition_entry(node, value, depth, alpha, beta)
+    return value
+
+
+// For adding to transpostiontion table
+if value == alpha:
+    flag = LOWER_BOUND
+elif value == beta:
+    flag = UPPER_BOUND
+else:
+    flag = EXACT
+*/
 
 } // end of computer namespace

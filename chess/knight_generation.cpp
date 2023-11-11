@@ -13,34 +13,34 @@ int main()
 
         if (rank >= 2) {
             if (file >= 1) {
-                legal.push_back(-17);
+                legal.push_back(i-17);
             }
             if (file <= 6) {
-                legal.push_back(-15);
+                legal.push_back(i-15);
             }
         }
         if (rank >= 1) {
             if (file >= 2) {
-                legal.push_back(-10);
+                legal.push_back(i-10);
             }
             if (file <= 5) {
-                legal.push_back(-6);
+                legal.push_back(i-6);
             }
         }
         if (rank <= 6) {
             if (file >= 2) {
-                legal.push_back(6);
+                legal.push_back(i+6);
             }
             if (file <= 5) {
-                legal.push_back(10);
+                legal.push_back(i+10);
             }
         }
         if (rank <= 5) {
             if (file >= 1) {
-                legal.push_back(15);
+                legal.push_back(i+15);
             }
             if (file <= 6) {
-                legal.push_back(17);
+                legal.push_back(i+17);
             }
         }
 
