@@ -113,7 +113,7 @@ struct Board
         /**
          * Construct a new Move object from the given board
          */
-        Move(uint8 start, uint8 target)
+        Move(Board *board, uint8 start, uint8 target, bool pseudo=false)
         {
             // TODO: move constructor
         }
@@ -122,7 +122,7 @@ struct Board
         static constexpr uint8 NONE       = 0b00000;
         static constexpr uint8 CAPTURE    = 0b00001;
         static constexpr uint8 PROMOTION  = 0b00010;
-        static constexpr uint8 CHECK  =     0b00100;
+        static constexpr uint8 CHECK      = 0b00100;
         static constexpr uint8 EN_PASSANT = 0b01000;
         static constexpr uint8 CASTLE     = 0b10000;
     };
@@ -135,9 +135,6 @@ struct Board
      */
     Board(const std::string &fenString)
     {
-        // INITIALIZE GAME DATA
-        // peice data, castling data, en-passant, move clocks, zobrist hash
-
         std::istringstream fenStringStream(fenString);
         std::string peicePlacementData, activeColor, castlingAvailabilty, enPassantTarget, halfmoveClock, fullmoveNumber;
 
@@ -321,7 +318,153 @@ struct Board
      */
     std::vector<Move> pseudoLegalMoves(uint8 flags=Move::NONE)
     {
-        // TODO generate legal moves
+        uint8 color = totalHalfmoves % 2;
+        uint8 enemy = !color;
+
+        std::vector<Move> moves;
+
+        // Used for optimizing the legality checking of moves
+        std::vector<uint8> possiblyPinned;
+        std::vector<uint8> checkingKing;
+
+        // Check if king in check and record possibly pinned peices
+        uint8 king = kingIndex[color];
+        uint8 checks = 0;
+
+        for (uint8 j = 0; j < KNIGHT_MOVES[king][0]; ++j) {
+            if (peices[KNIGHT_MOVES[king][j]] == enemy + KNIGHT) {
+                checkingKing.push_back(KNIGHT_MOVES[king][j]);
+            }
+        }
+
+        for (uint8 j = king - 8; j < DIRECTION_BOUNDS[king][B]; j -= 8) {
+            if (peices[j]) {
+                if (peices[j] == enemy + ROOK || enemy + QUEEN) {
+                    for (uint8 k = j; k < king; k += 8) {
+                        checkingKing.push_back(k);
+                    }
+
+                } else if (peices[j] >> 3 == color) {
+                    possiblyPinned.push_back(j);
+                }
+                break;
+            }
+        }
+
+        for (uint8 j = king + 8; j < DIRECTION_BOUNDS[king][F]; j += 8) {
+            if (peices[j]) {
+                if (peices[j] == enemy + ROOK || enemy + QUEEN) {
+                    for (uint8 k = j; k > king; k -= 8) {
+                        checkingKing.push_back(k);
+                    }
+
+                } else if (peices[j] >> 3 == color) {
+                    possiblyPinned.push_back(j);
+                }
+                break;
+            }
+        }
+
+        for (uint8 j = king - 1; j < DIRECTION_BOUNDS[king][L]; j -= 1) {
+            if (peices[j]) {
+                if (peices[j] == enemy + ROOK || enemy + QUEEN) {
+                    for (uint8 k = j; k < king; k += 1) {
+                        checkingKing.push_back(k);
+                    }
+
+                } else if (peices[j] >> 3 == color) {
+                    possiblyPinned.push_back(j);
+                }
+                break;
+            }
+        }
+
+        for (uint8 j = king + 1; j < DIRECTION_BOUNDS[king][R]; j += 1) {
+            if (peices[j]) {
+                if (peices[j] == enemy + ROOK || enemy + QUEEN) {
+                    for (uint8 k = j; k > king; k -= 1) {
+                        checkingKing.push_back(k);
+                    }
+
+                } else if (peices[j] >> 3 == color) {
+                    possiblyPinned.push_back(j);
+                }
+                break;
+            }
+        }
+
+        for (uint8 j = king - 9; j < DIRECTION_BOUNDS[king][BL]; j -= 9) {
+            if (peices[j]) {
+                if (peices[j] == enemy + BISHOP || enemy + QUEEN) {
+                    for (uint8 k = j; k < king; k += 9) {
+                        checkingKing.push_back(k);
+                    }
+
+                } else if (peices[j] >> 3 == color) {
+                    possiblyPinned.push_back(j);
+                }
+                break;
+            }
+        }
+
+        for (uint8 j = king + 9; j < DIRECTION_BOUNDS[king][FR]; j += 9) {
+            if (peices[j]) {
+                if (peices[j] == enemy + BISHOP || enemy + QUEEN) {
+                    for (uint8 k = j; k > king; k -= 9) {
+                        checkingKing.push_back(k);
+                    }
+
+                } else if (peices[j] >> 3 == color) {
+                    possiblyPinned.push_back(j);
+                }
+                break;
+            }
+        }
+
+        for (uint8 j = king - 7; j < DIRECTION_BOUNDS[king][BR]; j -= 7) {
+            if (peices[j]) {
+                if (peices[j] == enemy + BISHOP || enemy + QUEEN) {
+                    for (uint8 k = j; k < king; k += 7) {
+                        checkingKing.push_back(k);
+                    }
+
+                } else if (peices[j] >> 3 == color) {
+                    possiblyPinned.push_back(j);
+                }
+                break;
+            }
+        }
+
+        for (uint8 j = king + 7; j < DIRECTION_BOUNDS[king][FL]; j += 7) {
+            if (peices[j]) {
+                if (peices[j] == enemy + BISHOP || enemy + QUEEN) {
+                    for (uint8 k = j; k > king; k -= 7) {
+                        ++checks;
+                        checkingKing.push_back(k);
+                    }
+
+                } else if (peices[j] >> 3 == color) {
+                    possiblyPinned.push_back(j);
+                }
+                break;
+            }
+        }
+
+        // Handle check seperately
+        if (checks) {
+            // Generate king moves
+            for (uint8 j = 0; j < KING_MOVES[king][0]; ++j) {
+                if (!peices[KING_MOVES[king][j]] || peices[KING_MOVES[king][j]] >> 3 == enemy) {
+                    moves.emplace_back(this, king, KING_MOVES[king][j], true);
+                }
+            }
+
+            if (checks > 1) {
+                return moves;
+            }
+
+            // Generate moves that block check
+        }
     }
 
     /**
