@@ -5,6 +5,7 @@ Planned features:
  - pseudo-legal move generation
  - alpha-beta pruning
  - move ordering
+ - killer moves
  - quiescence search
  - transposition table
  - iterative deepening
