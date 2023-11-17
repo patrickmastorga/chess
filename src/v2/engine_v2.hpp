@@ -1,4 +1,4 @@
-#include "../chess.hpp"
+#include "./chess.hpp"
 #include "board.hpp"
 
 class EngineV2 : public StandardEngine
