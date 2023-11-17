@@ -18,68 +18,11 @@ typedef std::uint_fast32_t uint32;
 typedef std::uint_fast64_t uint64;
 
 /**
- * struct for containing info about the current state of the chess game
+ * class representing the current state of the chess game
  */
-struct Board
+class Board
 {
-    // DEFINITIONS
-    static constexpr uint8 WHITE = 0b0000;
-    static constexpr uint8 BLACK = 0b1000;
-    static constexpr uint8 PAWN =   0b001;
-    static constexpr uint8 KNIGHT = 0b010;
-    static constexpr uint8 BISHOP = 0b011;
-    static constexpr uint8 ROOK =   0b100;
-    static constexpr uint8 QUEEN =  0b101;
-    static constexpr uint8 KING =   0b110;
-
-
-    // MEMBERS
-    /**
-     * color and peice type at every square (index [0, 63] -> [a1, h8])
-     */
-    uint8 peices[64];
-
-    /**
-     * contains the halfmove number when the kingside castling rights were lost for white or black (index 0 and 1)
-     */
-    uint16 kingsideCastlingRightsLost[2];
-
-    /**
-     * contains the halfmove number when the queenside castling rights were lost for white or black (index 0 and 1)
-     */
-    uint16 queensideCastlingRightsLost[2];
-
-    /**
-     * file where a pawn has just moved two squares over
-     */
-    std::stack<int8> eligibleEnPassantFile;
-
-    /**
-     * number of half moves since pawn move or capture (half move is one player taking a turn) (used for 50 move rule)
-     */
-    std::stack<uint8> halfmovesSincePawnMoveOrCapture;
-
-    /**
-     * zobrist hash of the current position
-     */
-    uint64 zobristHash;
-
-    /**
-     * total half moves since game start (half move is one player taking a turn)
-     */
-    uint16 totalHalfmoves;
-
-    /**
-     * Index of the white and black king (index 0 and 1)
-     */
-    uint8 kingIndex[2];
-
-    /**
-     * Indices of all white and black peices (index 0 and 1)
-     */
-    std::unordered_set<uint8> peiceIndices[2];
-
-    
+public:
     // MOVE STRUCT
     /**
      * struct for containing info about a move
@@ -132,7 +75,7 @@ struct Board
         static constexpr uint8 EN_PASSANT = 0b01000;
         static constexpr uint8 CASTLE     = 0b10000;
     };
-
+    
     
     // CONSTRUCTORS
     /**
@@ -147,7 +90,7 @@ struct Board
         peiceIndices[0] = std::unordered_set<uint8>(20);
         peiceIndices[1] = std::unordered_set<uint8>(20);
         
-        zobristHash = 0;
+        zobrist = 0;
         
         // Get peice placement data from fen string
         if (!std::getline(fenStringStream, peicePlacementData, ' ')) {
@@ -228,7 +171,7 @@ struct Board
         } else if (activeColor == "b") {
             // Black is to move
             totalHalfmoves = 1;
-            zobristHash ^= ZOBRIST_TURN_KEY;
+            zobrist ^= ZOBRIST_TURN_KEY;
         
         } else {
             // active color can only be "wb"
@@ -253,12 +196,12 @@ struct Board
                     case 'K':
                     case 'k':
                         kingsideCastlingRightsLost[color] = 0;
-                        zobristHash ^= ZOBRIST_KINGSIDE_CASTLING_KEYS[color];
+                        zobrist ^= ZOBRIST_KINGSIDE_CASTLING_KEYS[color];
                         break;
                     case 'Q':
                     case 'q':
                         queensideCastlingRightsLost[color] = 0;
-                        zobristHash ^= ZOBRIST_QUEENSIDE_CASTLING_KEYS[color];
+                        zobrist ^= ZOBRIST_QUEENSIDE_CASTLING_KEYS[color];
                         break;
                     default:
                         throw std::invalid_argument("Unrecognised char in FEN castling availability data!");
@@ -274,7 +217,7 @@ struct Board
         if (enPassantTarget != "-") {
             try {
                 eligibleEnPassantFile.push(algebraicNotationToBoardIndex(enPassantTarget) % 8);
-                zobristHash ^= ZOBRIST_EN_PASSANT_KEYS[eligibleEnPassantFile.top()];
+                zobrist ^= ZOBRIST_EN_PASSANT_KEYS[eligibleEnPassantFile.top()];
             } catch (const std::invalid_argument &e) {
                 throw std::invalid_argument(std::string("Invalid FEN en passant target! ") + e.what());
             }
@@ -310,7 +253,7 @@ struct Board
         
         for (uint8 i = 0; i < 64; ++i) {
             if (peices[i]) {
-                zobristHash ^= ZOBRIST_PEICE_KEYS[peices[i] >> 3][peices[i] % (1 << 3) - 1][i];
+                zobrist ^= ZOBRIST_PEICE_KEYS[peices[i] >> 3][peices[i] % (1 << 3) - 1][i];
             }
         }
     }
@@ -321,25 +264,42 @@ struct Board
     Board() : Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {}
 
 
-    // METHODS
+    // PUBLIC METHODS
     /**
      * Generates pseudo-legal moves for the current position
      * @param flags only generate moves with the given flags
      * @return std::vector<Move> of pseudo-legal moves for a position
      */
-    std::vector<Move> pseudoLegalMoves(uint8 flags=Move::NONE)
+    std::vector<Move> pseudoLegalMoves(uint8 flags=Move::NONE) const
     {
+        // TODO Pawn moces and en passant
+        // TODO Castling
+        // TODO Better pinned peice generation
+        
         uint8 color = totalHalfmoves % 2;
         uint8 enemy = !color;
 
         // Used for optimizing the legality checking of moves
-        std::unordered_set<uint8> possiblyPinned(8);
-        std::unordered_set<uint8> checkingSquares(16);
+        std::unordered_set<uint8> pinnedPeices(11);
+        std::unordered_set<uint8> checkingSquares(11);
 
-        // Check if king in check and record possibly pinned peices and checking squares
+        // Check if king in check and record pinned peices and checking squares
         uint8 king = kingIndex[color];
         uint8 checks = 0;
 
+        // Pawn checks
+        uint8 kingFile = king % 8;
+        uint8 ahead = king + 8 - 16 * color;
+        if (kingFile != 0 && peices[ahead - 1] == enemy + PAWN) {
+            checkingSquares.insert(ahead - 1);
+            ++checks;
+        }
+        if (kingFile != 7 && peices[ahead + 1] == enemy + PAWN) {
+            checkingSquares.insert(ahead + 1);
+            ++checks;
+        }
+
+        // Knight checks
         for (uint8 j = 0; j < KNIGHT_MOVES[king][0]; ++j) {
             if (peices[KNIGHT_MOVES[king][j]] == enemy + KNIGHT) {
                 checkingSquares.insert(KNIGHT_MOVES[king][j]);
@@ -347,126 +307,200 @@ struct Board
             }
         }
 
+        // pins and sliding peice checks
+        uint8 potentialPin = 0;
         for (uint8 j = king - 8; j < DIRECTION_BOUNDS[king][B]; j -= 8) {
-            if (peices[j]) {
-                if (peices[j] == enemy + ROOK || enemy + QUEEN) {
-                    for (uint8 k = j; k < king; k += 8) {
-                        checkingSquares.insert(k);
-                    }
-                    ++checks;
-
-                } else if (peices[j] >> 3 == color) {
-                    possiblyPinned.insert(j);
-                }
-                break;
+            if (!peices[j]) {
+                continue;
             }
+            if (!potentialPin && peices[j] >> 3 == color) {
+                potentialPin = j;
+                continue;
+            }
+            if (peices[j] == enemy + ROOK || peices[j] == enemy + QUEEN) {
+                if (potentialPin) {
+                    pinnedPeices.insert(potentialPin);
+                    break;
+                }
+                if (checks++) { // dont need to record checking squares/pins for double checks
+                    goto moveGeneration;
+                }
+                for (uint8 k = j; k < king; k += 8) {
+                    checkingSquares.insert(k);
+                }
+            }
+            break;
         }
-
+        
+        potentialPin = 0;
         for (uint8 j = king + 8; j < DIRECTION_BOUNDS[king][F]; j += 8) {
-            if (peices[j]) {
-                if (peices[j] == enemy + ROOK || enemy + QUEEN) {
-                    for (uint8 k = j; k > king; k -= 8) {
-                        checkingSquares.insert(k);
-                    }
-                    ++checks;
-
-                } else if (peices[j] >> 3 == color) {
-                    possiblyPinned.insert(j);
-                }
-                break;
+            if (!peices[j]) {
+                continue;
             }
+            if (!potentialPin && peices[j] >> 3 == color) {
+                potentialPin = j;
+                continue;
+            }
+            if (peices[j] == enemy + ROOK || peices[j] == enemy + QUEEN) {
+                if (potentialPin) {
+                    pinnedPeices.insert(potentialPin);
+                    break;
+                }
+                if (checks++) { // dont need to record checking squares/pins for double checks
+                    goto moveGeneration;
+                }
+                for (uint8 k = j; k > king; k -= 8) {
+                    checkingSquares.insert(k);
+                }
+            }
+            break;
         }
 
+        potentialPin = 0;
         for (uint8 j = king - 1; j < DIRECTION_BOUNDS[king][L]; j -= 1) {
-            if (peices[j]) {
-                if (peices[j] == enemy + ROOK || enemy + QUEEN) {
-                    for (uint8 k = j; k < king; k += 1) {
-                        checkingSquares.insert(k);
-                    }
-                    ++checks;
-
-                } else if (peices[j] >> 3 == color) {
-                    possiblyPinned.insert(j);
-                }
-                break;
+            if (!peices[j]) {
+                continue;
             }
+            if (!potentialPin && peices[j] >> 3 == color) {
+                potentialPin = j;
+                continue;
+            }
+            if (peices[j] == enemy + ROOK || peices[j] == enemy + QUEEN) {
+                if (potentialPin) {
+                    pinnedPeices.insert(potentialPin);
+                    break;
+                }
+                if (checks++) { // dont need to record checking squares/pins for double checks
+                    goto moveGeneration;
+                }
+                for (uint8 k = j; k < king; k += 1) {
+                    checkingSquares.insert(k);
+                }
+            }
+            break;
         }
 
+        potentialPin = 0;
         for (uint8 j = king + 1; j < DIRECTION_BOUNDS[king][R]; j += 1) {
-            if (peices[j]) {
-                if (peices[j] == enemy + ROOK || enemy + QUEEN) {
-                    for (uint8 k = j; k > king; k -= 1) {
-                        checkingSquares.insert(k);
-                    }
-                    ++checks;
-
-                } else if (peices[j] >> 3 == color) {
-                    possiblyPinned.insert(j);
-                }
-                break;
+            if (!peices[j]) {
+                continue;
             }
+            if (!potentialPin && peices[j] >> 3 == color) {
+                potentialPin = j;
+                continue;
+            }
+            if (peices[j] == enemy + ROOK || peices[j] == enemy + QUEEN) {
+                if (potentialPin) {
+                    pinnedPeices.insert(potentialPin);
+                    break;
+                }
+                if (checks++) { // dont need to record checking squares/pins for double checks
+                    goto moveGeneration;
+                }
+                for (uint8 k = j; k > king; k -= 1) {
+                    checkingSquares.insert(k);
+                }
+            }
+            break;
         }
 
+        potentialPin = 0;
         for (uint8 j = king - 9; j < DIRECTION_BOUNDS[king][BL]; j -= 9) {
-            if (peices[j]) {
-                if (peices[j] == enemy + BISHOP || enemy + QUEEN) {
-                    for (uint8 k = j; k < king; k += 9) {
-                        checkingSquares.insert(k);
-                    }
-                    ++checks;
-
-                } else if (peices[j] >> 3 == color) {
-                    possiblyPinned.insert(j);
-                }
-                break;
+            if (!peices[j]) {
+                continue;
             }
+            if (!potentialPin && peices[j] >> 3 == color) {
+                potentialPin = j;
+                continue;
+            }
+            if (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN) {
+                if (potentialPin) {
+                    pinnedPeices.insert(potentialPin);
+                    break;
+                }
+                if (checks++) { // dont need to record checking squares/pins for double checks
+                    goto moveGeneration;
+                }
+                for (uint8 k = j; k < king; k += 9) {
+                    checkingSquares.insert(k);
+                }
+            }
+            break;
         }
 
+        potentialPin = 0;
         for (uint8 j = king + 9; j < DIRECTION_BOUNDS[king][FR]; j += 9) {
-            if (peices[j]) {
-                if (peices[j] == enemy + BISHOP || enemy + QUEEN) {
-                    for (uint8 k = j; k > king; k -= 9) {
-                        checkingSquares.insert(k);
-                    }
-                    ++checks;
-
-                } else if (peices[j] >> 3 == color) {
-                    possiblyPinned.insert(j);
-                }
-                break;
+            if (!peices[j]) {
+                continue;
             }
+            if (!potentialPin && peices[j] >> 3 == color) {
+                potentialPin = j;
+                continue;
+            }
+            if (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN) {
+                if (potentialPin) {
+                    pinnedPeices.insert(potentialPin);
+                    break;
+                }
+                if (checks++) { // dont need to record checking squares/pins for double checks
+                    goto moveGeneration;
+                }
+                for (uint8 k = j; k > king; k -= 9) {
+                    checkingSquares.insert(k);
+                }
+            }
+            break;
         }
 
+        potentialPin = 0;
         for (uint8 j = king - 7; j < DIRECTION_BOUNDS[king][BR]; j -= 7) {
-            if (peices[j]) {
-                if (peices[j] == enemy + BISHOP || enemy + QUEEN) {
-                    for (uint8 k = j; k < king; k += 7) {
-                        checkingSquares.insert(k);
-                    }
-                    ++checks;
-
-                } else if (peices[j] >> 3 == color) {
-                    possiblyPinned.insert(j);
-                }
-                break;
+            if (!peices[j]) {
+                continue;
             }
+            if (!potentialPin && peices[j] >> 3 == color) {
+                potentialPin = j;
+                continue;
+            }
+            if (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN) {
+                if (potentialPin) {
+                    pinnedPeices.insert(potentialPin);
+                    break;
+                }
+                if (checks++) { // dont need to record checking squares/pins for double checks
+                    goto moveGeneration;
+                }
+                for (uint8 k = j; k < king; k += 7) {
+                    checkingSquares.insert(k);
+                }
+            }
+            break;
         }
 
+        potentialPin = 0;
         for (uint8 j = king + 7; j < DIRECTION_BOUNDS[king][FL]; j += 7) {
-            if (peices[j]) {
-                if (peices[j] == enemy + BISHOP || enemy + QUEEN) {
-                    for (uint8 k = j; k > king; k -= 7) {
-                        checkingSquares.insert(k);
-                    }
-                    ++checks;
-
-                } else if (peices[j] >> 3 == color) {
-                    possiblyPinned.insert(j);
-                }
-                break;
+            if (!peices[j]) {
+                continue;
             }
+            if (!potentialPin && peices[j] >> 3 == color) {
+                potentialPin = j;
+                continue;
+            }
+            if (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN) {
+                if (potentialPin) {
+                    pinnedPeices.insert(potentialPin);
+                    break;
+                }
+                if (checks++) { // dont need to record checking squares/pins for double checks
+                    goto moveGeneration;
+                }
+                for (uint8 k = j; k > king; k -= 7) {
+                    checkingSquares.insert(k);
+                }
+            }
+            break;
         }
 
+        moveGeneration:
         // Generate moves based on data gathered
         std::vector<Move> moves;
         
@@ -482,32 +516,123 @@ struct Board
         }
 
         // Special move generation for when few number of checking squares
-        if (checks && checkingSquares.size() < peiceIndices[color].size() * 0.0) {
-            // TODO
+        if (checks && checkingSquares.size() < peiceIndices[color].size() * 0.4) {
+            // Generate king moves
+            for (uint8 j = 0; j < KING_MOVES[king][0]; ++j) {
+                if (!peices[KING_MOVES[king][j]] || peices[KING_MOVES[king][j]] >> 3 == enemy) {
+                    moves.emplace_back(this, king, KING_MOVES[king][j], false);
+                }
+            }
+           
+            // Backwards search from checking squares to see if peices can move to them
+            for (uint8 t : checkingSquares) {
+                // TODO Pawn takes (including en passant)
+                
+                for (uint8 j = 0; j < KNIGHT_MOVES[t][0]; ++j) {
+                    if (peices[KNIGHT_MOVES[t][j]] == color + KNIGHT && !pinnedPeices.count(KNIGHT_MOVES[t][j])) {
+                        moves.emplace_back(this, KNIGHT_MOVES[t][j], t, true);
+                    }
+                }
+
+                for (uint8 s = t - 8; s < DIRECTION_BOUNDS[king][B]; s -= 8) {
+                    if (peices[s]) {
+                        if ((peices[s] == color + ROOK || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
+                            moves.emplace_back(this, s, t, true);
+                        }
+                        break;
+                    }
+                }
+
+                for (uint8 s = t + 8; s < DIRECTION_BOUNDS[king][F]; s += 8) {
+                    if (peices[s]) {
+                        if ((peices[s] == color + ROOK || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
+                            moves.emplace_back(this, s, t, true);
+                        }
+                        break;
+                    }
+                }
+
+                for (uint8 s = t - 1; s < DIRECTION_BOUNDS[king][L]; s -= 1) {
+                    if (peices[s]) {
+                        if ((peices[s] == color + ROOK || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
+                            moves.emplace_back(this, s, t, true);
+                        }
+                        break;
+                    }
+                }
+
+                for (uint8 s = t + 1; s < DIRECTION_BOUNDS[king][R]; s += 1) {
+                    if (peices[s]) {
+                        if ((peices[s] == color + ROOK || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
+                            moves.emplace_back(this, s, t, true);
+                        }
+                        break;
+                    }
+                }
+
+                for (uint8 s = t - 9; s < DIRECTION_BOUNDS[king][BL]; s -= 9) {
+                    if (peices[s]) {
+                        if ((peices[s] == color + BISHOP || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
+                            moves.emplace_back(this, s, t, true);
+                        }
+                        break;
+                    }
+                }
+
+                for (uint8 s = t + 9; s < DIRECTION_BOUNDS[king][FR]; s += 9) {
+                    if (peices[s]) {
+                        if ((peices[s] == color + BISHOP || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
+                            moves.emplace_back(this, s, t, true);
+                        }
+                        break;
+                    }
+                }
+
+                for (uint8 s = t - 7; s < DIRECTION_BOUNDS[king][BR]; s -= 7) {
+                    if (peices[s]) {
+                        if ((peices[s] == color + BISHOP || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
+                            moves.emplace_back(this, s, t, true);
+                        }
+                        break;
+                    }
+                }
+
+                for (uint8 s = t + 7; s < DIRECTION_BOUNDS[king][FL]; s += 7) {
+                    if (peices[s]) {
+                        if ((peices[s] == color + BISHOP || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
+                            moves.emplace_back(this, s, t, true);
+                        }
+                        break;
+                    }
+                }
+            }
         }
 
-        // General case
-        for (uint8 i : peiceIndices[color]) {
-            bool pinned = possiblyPinned.count(i);
+        // TODO Castling
 
-            switch (peices[i] % (1 << 3)) {
+        // General case
+        for (uint8 s : peiceIndices[color]) {
+            bool pinned = pinnedPeices.count(s);
+
+            switch (peices[s] % (1 << 3)) {
                 case PAWN:
-                    uint8 file = i % 8;
-                    uint8 t = i + 8 - 16 * color;
+                    uint8 file = s % 8;
+                    uint8 t = s + 8 - 16 * color;
                     if (file != 0 && (!peices[t - 1] || peices[t - 1] >> 3 == enemy) && (!checks || checkingSquares.count(t - 1))) {
-                        moves.emplace_back(i, t, this, !pinned);
+                        moves.emplace_back(s, t, this, !pinned);
                     }
                     if (file != 7 && (!peices[t + 1] || peices[t + 1] >> 3 == enemy) && (!checks || checkingSquares.count(t + 1))) {
-                        moves.emplace_back(i, t, this, !pinned);
+                        moves.emplace_back(s, t, this, !pinned);
                     }
+                    // TODO En passant
                     break;
 
                 case KNIGHT:
                     uint8 t;
-                    for (uint8 j = 1; j < KNIGHT_MOVES[i][0]; ++j) {
-                        t = KNIGHT_MOVES[i][j];
+                    for (uint8 j = 1; j < KNIGHT_MOVES[s][0]; ++j) {
+                        t = KNIGHT_MOVES[s][j];
                         if ((!peices[t] || peices[t] >> 3 == enemy) && (!checks || checkingSquares.count(t))) {
-                            moves.emplace_back(i, t, this, !pinned);
+                            moves.emplace_back(s, t, this, !pinned);
                         }
                     }
                     break;
@@ -515,81 +640,81 @@ struct Board
                 case BISHOP:
                 case ROOK:
                 case QUEEN:
-                    if (peices[i] % (1 << 3) == BISHOP) {
+                    if (peices[s] % (1 << 3) == BISHOP) {
                         goto bishopMoves;
                     }
 
-                    for (uint8 t = i - 8; t < DIRECTION_BOUNDS[i][B]; t -= 8) {
+                    for (uint8 t = s - 8; t < DIRECTION_BOUNDS[s][B]; t -= 8) {
                         if ((!peices[t] || peices[t] >> 3 == enemy) && (!checks || checkingSquares.count(t))) {
-                            moves.emplace_back(i, t, this, !pinned);
+                            moves.emplace_back(s, t, this, !pinned);
                         }
                         if (peices[t]) {
                             break;
                         }
                     }
 
-                    for (uint8 t = i + 8; t < DIRECTION_BOUNDS[i][F]; t += 8) {
+                    for (uint8 t = s + 8; t < DIRECTION_BOUNDS[s][F]; t += 8) {
                         if ((!peices[t] || peices[t] >> 3 == enemy) && (!checks || checkingSquares.count(t))) {
-                            moves.emplace_back(i, t, this, !pinned);
+                            moves.emplace_back(s, t, this, !pinned);
                         }
                         if (peices[t]) {
                             break;
                         }
                     }
 
-                    for (uint8 t = i - 1; t < DIRECTION_BOUNDS[i][L]; t -= 1) {
+                    for (uint8 t = s - 1; t < DIRECTION_BOUNDS[s][L]; t -= 1) {
                         if ((!peices[t] || peices[t] >> 3 == enemy) && (!checks || checkingSquares.count(t))) {
-                            moves.emplace_back(i, t, this, !pinned);
+                            moves.emplace_back(s, t, this, !pinned);
                         }
                         if (peices[t]) {
                             break;
                         }
                     }
 
-                    for (uint8 t = i + 1; t < DIRECTION_BOUNDS[i][R]; t += 1) {
+                    for (uint8 t = s + 1; t < DIRECTION_BOUNDS[s][R]; t += 1) {
                         if ((!peices[t] || peices[t] >> 3 == enemy) && (!checks || checkingSquares.count(t))) {
-                            moves.emplace_back(i, t, this, !pinned);
+                            moves.emplace_back(s, t, this, !pinned);
                         }
                         if (peices[t]) {
                             break;
                         }
                     }
 
-                    if (peices[i] % (1 << 3) == ROOK) {
+                    if (peices[s] % (1 << 3) == ROOK) {
                         break;
                     }
                     bishopMoves:
 
-                    for (uint8 t = i - 9; t < DIRECTION_BOUNDS[i][BL]; t -= 9) {
+                    for (uint8 t = s - 9; t < DIRECTION_BOUNDS[s][BL]; t -= 9) {
                         if ((!peices[t] || peices[t] >> 3 == enemy) && (!checks || checkingSquares.count(t))) {
-                            moves.emplace_back(i, t, this, !pinned);
+                            moves.emplace_back(s, t, this, !pinned);
                         }
                         if (peices[t]) {
                             break;
                         }
                     }
 
-                    for (uint8 t = i + 9; t < DIRECTION_BOUNDS[i][FR]; t += 9) {
+                    for (uint8 t = s + 9; t < DIRECTION_BOUNDS[s][FR]; t += 9) {
                         if ((!peices[t] || peices[t] >> 3 == enemy) && (!checks || checkingSquares.count(t))) {
-                            moves.emplace_back(i, t, this, !pinned);
+                            moves.emplace_back(s, t, this, !pinned);
                         }
                         if (peices[t]) {
                             break;
                         }
                     }
 
-                    for (uint8 t = i - 7; t < DIRECTION_BOUNDS[i][BR]; t -= 7) {
+                    for (uint8 t = s - 7; t < DIRECTION_BOUNDS[s][BR]; t -= 7) {
                         if ((!peices[t] || peices[t] >> 3 == enemy) && (!checks || checkingSquares.count(t))) {
-                            moves.emplace_back(i, t, this, !pinned);
+                            moves.emplace_back(s, t, this, !pinned);
                         }
                         if (peices[t]) {
                             break;
                         }
                     }
 
-                    for (uint8 t = i + 7; t < DIRECTION_BOUNDS[i][FL]; t += 7) {
+                    for (uint8 t = s + 7; t < DIRECTION_BOUNDS[s][FL]; t += 7) {
                         if ((!peices[t] || peices[t] >> 3 == enemy) && (!checks || checkingSquares.count(t))) {
-                            moves.emplace_back(i, t, this, !pinned);
+                            moves.emplace_back(s, t, this, !pinned);
                         }
                         if (peices[t]) {
                             break;
@@ -600,10 +725,10 @@ struct Board
                 
                 case KING:
                     uint8 t;
-                    for (uint8 j = 1; j < KING_MOVES[i][0]; ++j) {
-                        t = KING_MOVES[i][j];
+                    for (uint8 j = 1; j < KING_MOVES[s][0]; ++j) {
+                        t = KING_MOVES[s][j];
                         if (!peices[t] || peices[t] >> 3 == enemy) {
-                            moves.emplace_back(i, t, this, false);
+                            moves.emplace_back(s, t, this, false);
                         }
                     }
             }
@@ -624,10 +749,10 @@ struct Board
 
         // En passant file
         if (eligibleEnPassantFile.top() >= 0) {
-            zobristHash ^= ZOBRIST_EN_PASSANT_KEYS[eligibleEnPassantFile.top()];
+            zobrist ^= ZOBRIST_EN_PASSANT_KEYS[eligibleEnPassantFile.top()];
         }
         if (move.movingPeice == PAWN && std::abs(move.targetSquare - move.startSquare) == 16) {
-            zobristHash ^= ZOBRIST_EN_PASSANT_KEYS[move.startSquare % 8];
+            zobrist ^= ZOBRIST_EN_PASSANT_KEYS[move.startSquare % 8];
             eligibleEnPassantFile.push(move.startSquare % 8);
         
         } else {
@@ -635,22 +760,22 @@ struct Board
         }
 
         // Update zobrist hash for turn change
-        zobristHash ^= ZOBRIST_TURN_KEY;
+        zobrist ^= ZOBRIST_TURN_KEY;
         
         // Update zobrist hash for moving peice
         if (move.flags & Move::PROMOTION) {
-            zobristHash ^= ZOBRIST_PEICE_KEYS[color][PAWN][move.startSquare];
-            zobristHash ^= ZOBRIST_PEICE_KEYS[color][moving][move.targetSquare];
+            zobrist ^= ZOBRIST_PEICE_KEYS[color][PAWN][move.startSquare];
+            zobrist ^= ZOBRIST_PEICE_KEYS[color][moving][move.targetSquare];
             moving = color << 3 + PAWN;
         
         } else { 
-            zobristHash ^= ZOBRIST_PEICE_KEYS[color][moving][move.startSquare];
-            zobristHash ^= ZOBRIST_PEICE_KEYS[color][moving][move.targetSquare];
+            zobrist ^= ZOBRIST_PEICE_KEYS[color][moving][move.startSquare];
+            zobrist ^= ZOBRIST_PEICE_KEYS[color][moving][move.targetSquare];
         }
 
         // Update zobrist hash and peice indices set for capture
         if (move.capturedPeice) {
-            zobristHash ^= ZOBRIST_PEICE_KEYS[enemy][move.capturedPeice % (1 << 3)][move.targetSquare];
+            zobrist ^= ZOBRIST_PEICE_KEYS[enemy][move.capturedPeice % (1 << 3)][move.targetSquare];
             peiceIndices[enemy].erase(move.targetSquare);
         }
 
@@ -680,25 +805,25 @@ struct Board
                 // Queenside castling
                 peices[castlingRank + 3] = peices[castlingRank];
                 peices[castlingRank] = 0;
-                zobristHash ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank + 3];
-                zobristHash ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank];
+                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank + 3];
+                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank];
                 peiceIndices[color].erase(castlingRank);
                 peiceIndices[color].insert(castlingRank + 3);
                 
                 queensideCastlingRightsLost[color] = totalHalfmoves;
-                zobristHash ^= ZOBRIST_QUEENSIDE_CASTLING_KEYS[color];
+                zobrist ^= ZOBRIST_QUEENSIDE_CASTLING_KEYS[color];
                 
             } else {
                 // Kingside castling
                 peices[castlingRank + 5] = peices[castlingRank + 7];
                 peices[castlingRank + 7] = 0;
-                zobristHash ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank + 5];
-                zobristHash ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank + 7];
+                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank + 5];
+                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank + 7];
                 peiceIndices[color].erase(castlingRank + 7);
                 peiceIndices[color].insert(castlingRank + 5);
                 
                 kingsideCastlingRightsLost[color] = totalHalfmoves;
-                zobristHash ^= ZOBRIST_KINGSIDE_CASTLING_KEYS[color];
+                zobrist ^= ZOBRIST_KINGSIDE_CASTLING_KEYS[color];
             }
         }
 
@@ -706,13 +831,13 @@ struct Board
         if (!kingsideCastlingRightsLost[color]) {
             if (moving == KING || (moving == ROOK && move.startSquare % 8 == 7)) {
                 kingsideCastlingRightsLost[color] = totalHalfmoves;
-                zobristHash ^= ZOBRIST_KINGSIDE_CASTLING_KEYS[color];
+                zobrist ^= ZOBRIST_KINGSIDE_CASTLING_KEYS[color];
             }
         }
         if (!queensideCastlingRightsLost[color]) {
             if (moving == KING || (moving == ROOK && move.startSquare % 8 == 0)) {
                 kingsideCastlingRightsLost[color] = totalHalfmoves;
-                zobristHash ^= ZOBRIST_QUEENSIDE_CASTLING_KEYS[color];
+                zobrist ^= ZOBRIST_QUEENSIDE_CASTLING_KEYS[color];
             }
         }
         
@@ -733,30 +858,30 @@ struct Board
 
         // Undo en passant file
         if (eligibleEnPassantFile.top() >= 0) {
-            zobristHash ^= ZOBRIST_EN_PASSANT_KEYS[eligibleEnPassantFile.top()];
+            zobrist ^= ZOBRIST_EN_PASSANT_KEYS[eligibleEnPassantFile.top()];
         }
         eligibleEnPassantFile.pop();
         if (eligibleEnPassantFile.top() >= 0) {
-            zobristHash ^= ZOBRIST_EN_PASSANT_KEYS[eligibleEnPassantFile.top()];
+            zobrist ^= ZOBRIST_EN_PASSANT_KEYS[eligibleEnPassantFile.top()];
         }
 
         // Undo zobrist hash for turn change
-        zobristHash ^= ZOBRIST_TURN_KEY;
+        zobrist ^= ZOBRIST_TURN_KEY;
         
         // Undo zobrist hash for moving peice
         if (move.flags & Move::PROMOTION) {
-            zobristHash ^= ZOBRIST_PEICE_KEYS[color][PAWN][move.startSquare];
-            zobristHash ^= ZOBRIST_PEICE_KEYS[color][moving][move.targetSquare];
+            zobrist ^= ZOBRIST_PEICE_KEYS[color][PAWN][move.startSquare];
+            zobrist ^= ZOBRIST_PEICE_KEYS[color][moving][move.targetSquare];
             moving = color << 3 + PAWN;
         
         } else { 
-            zobristHash ^= ZOBRIST_PEICE_KEYS[color][moving][move.startSquare];
-            zobristHash ^= ZOBRIST_PEICE_KEYS[color][moving][move.targetSquare];
+            zobrist ^= ZOBRIST_PEICE_KEYS[color][moving][move.startSquare];
+            zobrist ^= ZOBRIST_PEICE_KEYS[color][moving][move.targetSquare];
         }
 
         // undo zobrist hash and peice indices set for capture
         if (move.capturedPeice) {
-            zobristHash ^= ZOBRIST_PEICE_KEYS[enemy][move.capturedPeice % (1 << 3)][move.targetSquare];
+            zobrist ^= ZOBRIST_PEICE_KEYS[enemy][move.capturedPeice % (1 << 3)][move.targetSquare];
             peiceIndices[enemy].insert(move.targetSquare);
         }
 
@@ -786,25 +911,25 @@ struct Board
                 // Queenside castling
                 peices[castlingRank] = peices[castlingRank + 3];
                 peices[castlingRank + 3] = 0;
-                zobristHash ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank + 3];
-                zobristHash ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank];
+                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank + 3];
+                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank];
                 peiceIndices[color].erase(castlingRank + 3);
                 peiceIndices[color].insert(castlingRank);
                 
                 queensideCastlingRightsLost[color] = 0;
-                zobristHash ^= ZOBRIST_QUEENSIDE_CASTLING_KEYS[color];
+                zobrist ^= ZOBRIST_QUEENSIDE_CASTLING_KEYS[color];
                 
             } else {
                 // Kingside castling
                 peices[castlingRank + 7] = peices[castlingRank + 5];
                 peices[castlingRank + 5] = 0;
-                zobristHash ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank + 5];
-                zobristHash ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank + 7];
+                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank + 5];
+                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank + 7];
                 peiceIndices[color].erase(castlingRank + 5);
                 peiceIndices[color].insert(castlingRank + 7);
                 
                 kingsideCastlingRightsLost[color] = 0;
-                zobristHash ^= ZOBRIST_KINGSIDE_CASTLING_KEYS[color];
+                zobrist ^= ZOBRIST_KINGSIDE_CASTLING_KEYS[color];
             }
         }
 
@@ -821,7 +946,74 @@ struct Board
             kingIndex[color] = move.startSquare;
         }
     }
+
+    /**
+     * @return 64 bit hashing of the current state of the game
+     */
+    uint64 zobristHash() const
+    {
+        return zobrist;
+    }
+
+private:
+    // PRIVATE DEFINITIONS
+    static constexpr uint8 WHITE = 0b0000;
+    static constexpr uint8 BLACK = 0b1000;
+    static constexpr uint8 PAWN =   0b001;
+    static constexpr uint8 KNIGHT = 0b010;
+    static constexpr uint8 BISHOP = 0b011;
+    static constexpr uint8 ROOK =   0b100;
+    static constexpr uint8 QUEEN =  0b101;
+    static constexpr uint8 KING =   0b110;
+
+    // PRIVATE MEMBERS
+    /**
+     * color and peice type at every square (index [0, 63] -> [a1, h8])
+     */
+    uint8 peices[64];
+
+    /**
+     * contains the halfmove number when the kingside castling rights were lost for white or black (index 0 and 1)
+     */
+    uint16 kingsideCastlingRightsLost[2];
+
+    /**
+     * contains the halfmove number when the queenside castling rights were lost for white or black (index 0 and 1)
+     */
+    uint16 queensideCastlingRightsLost[2];
+
+    /**
+     * file where a pawn has just moved two squares over
+     */
+    std::stack<int8> eligibleEnPassantFile;
+
+    /**
+     * number of half moves since pawn move or capture (half move is one player taking a turn) (used for 50 move rule)
+     */
+    std::stack<uint8> halfmovesSincePawnMoveOrCapture;
+
+    /**
+     * total half moves since game start (half move is one player taking a turn)
+     */
+    uint16 totalHalfmoves;
+
+    /**
+     * Index of the white and black king (index 0 and 1)
+     */
+    uint8 kingIndex[2];
+
+    /**
+     * Indices of all white and black peices (index 0 and 1)
+     */
+    std::unordered_set<uint8> peiceIndices[2];
+
+    /**
+     * zobrist hash of the current position
+     */
+    uint64 zobrist;
+
     
+    // PRIVATE METHODS
     /**
      * @param algebraic notation for position on chess board (ex e3, a1, c8)
      * @return uint8 index [0, 63] -> [a1, h8] of square on board
