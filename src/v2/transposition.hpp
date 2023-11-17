@@ -18,7 +18,7 @@ class TranspositionTable
     struct EncodedMove
     {
         /**
-         * Contains data about hte move including the start square and the end square
+         * Contains data about the move including the start square and the end square
          */
         uint16 data;
 
