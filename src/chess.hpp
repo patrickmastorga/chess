@@ -22,8 +22,8 @@ struct StandardMove
      * 0 - none; 1 - knight; 2 - bishop; 3 - rook; 4 - queen
      */
     int promotion;
-
-    StandardMove(int start, int target) : startSquare(start), targetSquare(target) {}
+    
+    StandardMove(int start, int target, int promote) : startSquare(start), targetSquare(target), promotion(promote) {}
 };
 
 /**

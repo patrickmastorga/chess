@@ -8,19 +8,32 @@
 class EngineV2 : public StandardEngine
 {
 public:
+    EngineV2() : board() {}
+
     void loadStartingPosition() override
     {
-        // TODO
-    }
-
-    std::vector<StandardMove> generateLegalMoves() override
-    {
-        // TODO
+        Board newBoard;
+        board = newBoard;
     }
 
     void loadFEN(std::string &fenString) override
     {
-        // TODO
+        Board newBoard(fenString);
+        board = newBoard;
+    }
+    
+    std::vector<StandardMove> generateLegalMoves() override
+    {
+        std::vector<Board::Move> pseudoLegalMoves = board.pseudoLegalMoves();
+        std::vector<StandardMove> legalMoves;
+
+        for (const Board::Move &move : pseudoLegalMoves) {
+            if (board.isLegal(move)) {
+                legalMoves.emplace_back(move.startSquare, move.targetSquare, move.flags & Board::Move::PROMOTION);
+            }
+        }
+
+        return legalMoves;
     }
 
     StandardMove computerMove(std::chrono::milliseconds thinkTime) override

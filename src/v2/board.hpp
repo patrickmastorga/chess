@@ -73,7 +73,7 @@ public:
         /**
          * Construct a new Move object from the given board
          */
-        Move(const Board *board, uint8 start, uint8 target, uint8 givenFlags) : startSquare(start), targetSquare(target), flags(givenFlags), moveStrengthGuess(0)
+        Move(const Board *board, uint8 start, uint8 target, uint8 givenFlags=NONE) : startSquare(start), targetSquare(target), flags(givenFlags), moveStrengthGuess(0)
         {
             movingPeice = board->peices[start];
             uint8 color = movingPeice & 0b11111000;
@@ -318,6 +318,7 @@ public:
      */
     std::vector<Move> pseudoLegalMoves(uint8 flags=Move::NONE) const
     {
+        // TODO Backwards check/pin generation for endgame
         // TODO Better pinned peice generation
         
         uint8 color = totalHalfmoves % 2;
@@ -1098,6 +1099,140 @@ public:
         }
     }
 
+    /**
+     * @return true if inputted move is legal in the current position
+     */
+    bool isLegal(const Move &move)
+    {
+        if (move.flags & Move::LEGAL) {
+            return true;
+        }
+
+        uint8 color = totalHalfmoves % 2;
+        makeMove(move);
+        bool legal = !inCheck(color);
+        unmakeMove(move);
+        return legal;
+    }
+
+    /**
+     * @return true if the king belonging to the inputted color is currently being attacked
+     */
+    bool inCheck(uint8 color) const
+    {
+        // TODO Backwards check searching during endgame
+
+        uint8 enemy = !color;
+        uint8 king = kingIndex[color];
+
+        // Pawn checks
+        uint8 kingFile = king % 8;
+        uint8 ahead = king + 8 - 16 * color;
+        if (kingFile != 0 && peices[ahead - 1] == enemy + PAWN) {
+            return true;
+        }
+        if (kingFile != 7 && peices[ahead + 1] == enemy + PAWN) {
+            return true;
+        }
+
+        // Knight checks
+        for (uint8 j = 0; j < KNIGHT_MOVES[king][0]; ++j) {
+            if (peices[KNIGHT_MOVES[king][j]] == enemy + KNIGHT) {
+                return true;
+            }
+        }
+
+        // sliding peice checks
+        for (uint8 j = king - 8; j < DIRECTION_BOUNDS[king][B]; j -= 8) {
+            if (peices[j]) {
+                if (peices[j] == enemy + ROOK || peices[j] == enemy + QUEEN) {
+                    return true;
+                }
+                break;
+            }
+        }
+        
+        for (uint8 j = king + 8; j < DIRECTION_BOUNDS[king][F]; j += 8) {
+            if (peices[j]) {
+                if (peices[j] == enemy + ROOK || peices[j] == enemy + QUEEN) {
+                    return true;
+                }
+                break;
+            }
+        }
+
+        for (uint8 j = king - 1; j < DIRECTION_BOUNDS[king][L]; j -= 1) {
+            if (peices[j]) {
+                if (peices[j] == enemy + ROOK || peices[j] == enemy + QUEEN) {
+                    return true;
+                }
+                break;
+            }
+        }
+
+        for (uint8 j = king + 1; j < DIRECTION_BOUNDS[king][R]; j += 1) {
+            if (peices[j]) {
+                if (peices[j] == enemy + ROOK || peices[j] == enemy + QUEEN) {
+                    return true;
+                }
+                break;
+            }
+        }
+
+        for (uint8 j = king - 9; j < DIRECTION_BOUNDS[king][BL]; j -= 9) {
+            if (peices[j]) {
+                if (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN) {
+                    return true;
+                }
+                break;
+            }
+        }
+
+        for (uint8 j = king + 9; j < DIRECTION_BOUNDS[king][FR]; j += 9) {
+            if (peices[j]) {
+                if (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN) {
+                    return true;
+                }
+                break;
+            }
+        }
+
+        for (uint8 j = king - 7; j < DIRECTION_BOUNDS[king][BR]; j -= 7) {
+            if (peices[j]) {
+                if (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN) {
+                    return true;
+                }
+                break;
+            }
+        }
+
+        for (uint8 j = king + 7; j < DIRECTION_BOUNDS[king][FL]; j += 7) {
+            if (peices[j]) {
+                if (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN) {
+                    return true;
+                }
+                break;
+            }
+        }
+
+        // King checks (seems wierd, but needed for detecting illegal moves)
+        for (uint8 j = 0; j < KING_MOVES[king][0]; ++j) {
+            if (peices[KING_MOVES[king][j]] == enemy + KING) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return true if the player who is to move is in check
+     */
+    bool inCheck() const
+    {
+        return inCheck(totalHalfmoves % 2);
+    }
+    
     /**
      * @return 64 bit hashing of the current state of the game
      */
