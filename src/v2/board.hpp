@@ -23,6 +23,17 @@ typedef std::uint_fast64_t uint64;
 class Board
 {
 public:
+    // DEFINITIONS
+    static constexpr uint8 WHITE = 0b0000;
+    static constexpr uint8 BLACK = 0b1000;
+    static constexpr uint8 PAWN =   0b001;
+    static constexpr uint8 KNIGHT = 0b010;
+    static constexpr uint8 BISHOP = 0b011;
+    static constexpr uint8 ROOK =   0b100;
+    static constexpr uint8 QUEEN =  0b101;
+    static constexpr uint8 KING =   0b110;
+
+
     // MOVE STRUCT
     /**
      * struct for containing info about a move
@@ -62,18 +73,53 @@ public:
         /**
          * Construct a new Move object from the given board
          */
-        Move(Board *board, uint8 start, uint8 target, bool guarenteedLegal=false)
+        Move(const Board *board, uint8 start, uint8 target, uint8 givenFlags) : startSquare(start), targetSquare(target), flags(givenFlags), moveStrengthGuess(0)
         {
-            // TODO: move constructor
+            movingPeice = board->peices[start];
+            uint8 color = movingPeice & 0b11111000;
+
+            if (flags & PROMOTION) {
+                movingPeice = color + flags & PROMOTION;
+            }
+
+            capturedPeice = board->peices[target];
+
+            if (flags & EN_PASSANT) {
+                capturedPeice = !color + PAWN;
+            }
+
+            if (capturedPeice) {
+                flags |= CAPTURE;
+            }
         }
 
+
+        // PUBLIC METHODS
+        /**
+         * Generates a heurusitic guess for the strength of a move based on information from the board
+         */
+        void initializeMoveStrengthGuess(Board *Board)
+        {
+            // TODO
+        }
+
+        /**
+         * Override stream insertion operator to display info about the move
+         */
+        std::ostream& operator<<(std::ostream& os) const {
+            os << "(" << Board::indexToAlgebraic(startSquare) << " -> " << Board::indexToAlgebraic(targetSquare) << ")";
+            return os;
+        }
+
+
         // FLAGS
-        static constexpr uint8 NONE       = 0b00000;
-        static constexpr uint8 CAPTURE    = 0b00001;
-        static constexpr uint8 PROMOTION  = 0b00010;
-        static constexpr uint8 CHECK      = 0b00100;
-        static constexpr uint8 EN_PASSANT = 0b01000;
-        static constexpr uint8 CASTLE     = 0b10000;
+        static constexpr uint8 NONE       = 0b00000000;
+        static constexpr uint8 PROMOTION  = 0b00000111;
+        static constexpr uint8 LEGAL      = 0b00001000;
+        static constexpr uint8 EN_PASSANT = 0b00010000;
+        static constexpr uint8 CASTLE     = 0b00100000;
+        static constexpr uint8 CAPTURE    = 0b01000000;
+        static constexpr uint8 CHECK      = 0b10000000;
     };
     
     
@@ -87,8 +133,8 @@ public:
         std::istringstream fenStringStream(fenString);
         std::string peicePlacementData, activeColor, castlingAvailabilty, enPassantTarget, halfmoveClock, fullmoveNumber;
 
-        peiceIndices[0] = std::unordered_set<uint8>(20);
-        peiceIndices[1] = std::unordered_set<uint8>(20);
+        peiceIndices[0] = std::unordered_set<uint8>(23);
+        peiceIndices[1] = std::unordered_set<uint8>(23);
         
         zobrist = 0;
         
@@ -216,7 +262,7 @@ public:
 
         if (enPassantTarget != "-") {
             try {
-                eligibleEnPassantFile.push(algebraicNotationToBoardIndex(enPassantTarget) % 8);
+                eligibleEnPassantFile.push(algebraicToIndex(enPassantTarget) % 8);
                 zobrist ^= ZOBRIST_EN_PASSANT_KEYS[eligibleEnPassantFile.top()];
             } catch (const std::invalid_argument &e) {
                 throw std::invalid_argument(std::string("Invalid FEN en passant target! ") + e.what());
@@ -272,8 +318,6 @@ public:
      */
     std::vector<Move> pseudoLegalMoves(uint8 flags=Move::NONE) const
     {
-        // TODO Pawn moces and en passant
-        // TODO Castling
         // TODO Better pinned peice generation
         
         uint8 color = totalHalfmoves % 2;
@@ -509,10 +553,30 @@ public:
             // Generate king moves
             for (uint8 j = 0; j < KING_MOVES[king][0]; ++j) {
                 if (!peices[KING_MOVES[king][j]] || peices[KING_MOVES[king][j]] >> 3 == enemy) {
-                    moves.emplace_back(this, king, KING_MOVES[king][j], false);
+                    moves.emplace_back(this, king, KING_MOVES[king][j], Move::NONE);
                 }
             }
             return moves;
+        }
+
+        // En passant moves
+        uint8 epfile = eligibleEnPassantFile.top();
+        if (epfile > 0) {
+            if (color == WHITE >> 3) {
+                if (epfile != 0 && peices[32 + epfile - 1] == color + PAWN && (!checks || checkingSquares.count(40 + epfile))) {
+                    moves.emplace_back(this, 32 + epfile - 1, 40 + epfile, Move::EN_PASSANT);
+                }
+                if (epfile != 7 && peices[32 + epfile + 1] == color + PAWN && (!checks || checkingSquares.count(40 + epfile))) {
+                    moves.emplace_back(this, 32 + epfile + 1, 40 + epfile, Move::EN_PASSANT);
+                }
+            } else {
+                if (epfile != 0 && peices[24 + epfile - 1] == color + PAWN && (!checks || checkingSquares.count(16 + epfile))) {
+                    moves.emplace_back(this, 24 + epfile - 1, 16 + epfile, Move::EN_PASSANT);
+                }
+                if (epfile != 7 && peices[24 + epfile + 1] == color + PAWN && (!checks || checkingSquares.count(16 + epfile))) {
+                    moves.emplace_back(this, 24 + epfile + 1, 16 + epfile, Move::EN_PASSANT);
+                }
+            }
         }
 
         // Special move generation for when few number of checking squares
@@ -520,24 +584,71 @@ public:
             // Generate king moves
             for (uint8 j = 0; j < KING_MOVES[king][0]; ++j) {
                 if (!peices[KING_MOVES[king][j]] || peices[KING_MOVES[king][j]] >> 3 == enemy) {
-                    moves.emplace_back(this, king, KING_MOVES[king][j], false);
+                    moves.emplace_back(this, king, KING_MOVES[king][j], Move::NONE);
                 }
             }
            
             // Backwards search from checking squares to see if peices can move to them
             for (uint8 t : checkingSquares) {
-                // TODO Pawn takes (including en passant)
-                
+
+                // Pawn can block/take
+                if ((color == WHITE >> 3 && t >> 3 >= 2) || (color == BLACK >> 3 && t >> 3 <= 5)) {
+                    uint8 file = t % 8;
+                    uint8 ahead = t - 8 + 16 * color;
+                    bool promotion = ahead >> 3 == 0 || ahead >> 3 == 7;
+                    // Pawn capture
+                    if (peices[t] >> 3 == enemy) { 
+                        if (file != 0 && peices[ahead - 1] == color + PAWN && !pinnedPeices.count(ahead - 1)) {
+                            if (promotion) {
+                                moves.emplace_back(this, ahead - 1, t, KNIGHT | Move::LEGAL);
+                                moves.emplace_back(this, ahead - 1, t, BISHOP | Move::LEGAL);
+                                moves.emplace_back(this, ahead - 1, t, ROOK | Move::LEGAL);
+                                moves.emplace_back(this, ahead - 1, t, QUEEN | Move::LEGAL);
+                            } else {
+                                moves.emplace_back(this, ahead - 1, t, Move::LEGAL);
+                            }
+                        }
+                        if (file != 7 && peices[ahead + 1] == color + PAWN && !pinnedPeices.count(ahead + 1)) {
+                            if (promotion) {
+                                moves.emplace_back(this, ahead + 1, t, KNIGHT | Move::LEGAL);
+                                moves.emplace_back(this, ahead + 1, t, BISHOP | Move::LEGAL);
+                                moves.emplace_back(this, ahead + 1, t, ROOK | Move::LEGAL);
+                                moves.emplace_back(this, ahead + 1, t, QUEEN | Move::LEGAL);
+                            } else {
+                                moves.emplace_back(this, ahead + 1, t, Move::LEGAL);
+                            }
+                        }
+                    // Pawn move
+                    } else if (!peices[t]) {
+                        uint8 doubleAhead = ahead - 8 + 16 * color;
+                        if (peices[ahead] == color + PAWN && !pinnedPeices.count(ahead)) {
+                            if (promotion) {
+                                moves.emplace_back(this, ahead, t, KNIGHT | Move::LEGAL);
+                                moves.emplace_back(this, ahead, t, BISHOP | Move::LEGAL);
+                                moves.emplace_back(this, ahead, t, ROOK | Move::LEGAL);
+                                moves.emplace_back(this, ahead, t, QUEEN | Move::LEGAL);
+                            } else {
+                                moves.emplace_back(this, ahead, t, Move::LEGAL);
+                            }
+                    
+                        } else if ((doubleAhead >> 3 == 1 || doubleAhead >> 3 == 6) && !peices[ahead] && peices[doubleAhead] == color + PAWN && !pinnedPeices.count(doubleAhead)) {
+                            moves.emplace_back(this, doubleAhead, t, Move::LEGAL);
+                        }
+                    }                
+                }
+
+                // Knight can block/take
                 for (uint8 j = 0; j < KNIGHT_MOVES[t][0]; ++j) {
                     if (peices[KNIGHT_MOVES[t][j]] == color + KNIGHT && !pinnedPeices.count(KNIGHT_MOVES[t][j])) {
-                        moves.emplace_back(this, KNIGHT_MOVES[t][j], t, true);
+                        moves.emplace_back(this, KNIGHT_MOVES[t][j], t, Move::LEGAL);
                     }
                 }
 
+                // Sliding peices can block/take
                 for (uint8 s = t - 8; s < DIRECTION_BOUNDS[king][B]; s -= 8) {
                     if (peices[s]) {
                         if ((peices[s] == color + ROOK || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
-                            moves.emplace_back(this, s, t, true);
+                            moves.emplace_back(this, s, t, Move::LEGAL);
                         }
                         break;
                     }
@@ -546,7 +657,7 @@ public:
                 for (uint8 s = t + 8; s < DIRECTION_BOUNDS[king][F]; s += 8) {
                     if (peices[s]) {
                         if ((peices[s] == color + ROOK || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
-                            moves.emplace_back(this, s, t, true);
+                            moves.emplace_back(this, s, t, Move::LEGAL);
                         }
                         break;
                     }
@@ -555,7 +666,7 @@ public:
                 for (uint8 s = t - 1; s < DIRECTION_BOUNDS[king][L]; s -= 1) {
                     if (peices[s]) {
                         if ((peices[s] == color + ROOK || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
-                            moves.emplace_back(this, s, t, true);
+                            moves.emplace_back(this, s, t, Move::LEGAL);
                         }
                         break;
                     }
@@ -564,7 +675,7 @@ public:
                 for (uint8 s = t + 1; s < DIRECTION_BOUNDS[king][R]; s += 1) {
                     if (peices[s]) {
                         if ((peices[s] == color + ROOK || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
-                            moves.emplace_back(this, s, t, true);
+                            moves.emplace_back(this, s, t, Move::LEGAL);
                         }
                         break;
                     }
@@ -573,7 +684,7 @@ public:
                 for (uint8 s = t - 9; s < DIRECTION_BOUNDS[king][BL]; s -= 9) {
                     if (peices[s]) {
                         if ((peices[s] == color + BISHOP || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
-                            moves.emplace_back(this, s, t, true);
+                            moves.emplace_back(this, s, t, Move::LEGAL);
                         }
                         break;
                     }
@@ -582,7 +693,7 @@ public:
                 for (uint8 s = t + 9; s < DIRECTION_BOUNDS[king][FR]; s += 9) {
                     if (peices[s]) {
                         if ((peices[s] == color + BISHOP || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
-                            moves.emplace_back(this, s, t, true);
+                            moves.emplace_back(this, s, t, Move::LEGAL);
                         }
                         break;
                     }
@@ -591,7 +702,7 @@ public:
                 for (uint8 s = t - 7; s < DIRECTION_BOUNDS[king][BR]; s -= 7) {
                     if (peices[s]) {
                         if ((peices[s] == color + BISHOP || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
-                            moves.emplace_back(this, s, t, true);
+                            moves.emplace_back(this, s, t, Move::LEGAL);
                         }
                         break;
                     }
@@ -600,7 +711,7 @@ public:
                 for (uint8 s = t + 7; s < DIRECTION_BOUNDS[king][FL]; s += 7) {
                     if (peices[s]) {
                         if ((peices[s] == color + BISHOP || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
-                            moves.emplace_back(this, s, t, true);
+                            moves.emplace_back(this, s, t, Move::LEGAL);
                         }
                         break;
                     }
@@ -608,23 +719,63 @@ public:
             }
         }
 
-        // TODO Castling
+        // Castling
+        if (!kingsideCastlingRightsLost[color]) {
+            uint8 castlingRank = 56 * color;
+            moves.emplace_back(this, castlingRank + 4, castlingRank + 6, Move::CASTLE);
+        }
+        if (!queensideCastlingRightsLost[color]) {
+            uint8 castlingRank = 56 * color;
+            moves.emplace_back(this, castlingRank + 4, castlingRank + 2, Move::CASTLE);
+        }
 
         // General case
         for (uint8 s : peiceIndices[color]) {
-            bool pinned = pinnedPeices.count(s);
+            uint8 legalFlag = pinnedPeices.count(s) ? Move::LEGAL : Move::NONE;
 
             switch (peices[s] % (1 << 3)) {
                 case PAWN:
                     uint8 file = s % 8;
-                    uint8 t = s + 8 - 16 * color;
-                    if (file != 0 && (!peices[t - 1] || peices[t - 1] >> 3 == enemy) && (!checks || checkingSquares.count(t - 1))) {
-                        moves.emplace_back(s, t, this, !pinned);
+                    uint8 ahead = s + 8 - 16 * color;
+                    bool promotion = s >> 3 == 0 || s >> 3 == 7;
+
+                    // Pawn foward moves
+                    if (!peices[ahead]) {
+                        if (promotion) {
+                            moves.emplace_back(this, s, ahead, legalFlag | KNIGHT);
+                            moves.emplace_back(this, s, ahead, legalFlag | BISHOP);
+                            moves.emplace_back(this, s, ahead, legalFlag | ROOK);
+                            moves.emplace_back(this, s, ahead, legalFlag | KING);
+                        } else {
+                            moves.emplace_back(this, s, ahead, legalFlag);
+                        }
+
+                        if ((s >> 3 == 1 || s >> 3 == 6) && !peices[ahead + 8 - 16 * color]) {
+                            moves.emplace_back(this, s, ahead + 8 - 16 * color, legalFlag);
+                        }
                     }
-                    if (file != 7 && (!peices[t + 1] || peices[t + 1] >> 3 == enemy) && (!checks || checkingSquares.count(t + 1))) {
-                        moves.emplace_back(s, t, this, !pinned);
+
+                    // Pawn captures
+                    if (file != 0 && peices[ahead - 1] && peices[ahead - 1] >> 3 == enemy) {
+                        if (promotion) {
+                            moves.emplace_back(this, s, ahead - 1, legalFlag | KNIGHT);
+                            moves.emplace_back(this, s, ahead - 1, legalFlag | BISHOP);
+                            moves.emplace_back(this, s, ahead - 1, legalFlag | ROOK);
+                            moves.emplace_back(this, s, ahead - 1, legalFlag | QUEEN);
+                        } else {
+                            moves.emplace_back(this, ahead - 1, legalFlag);
+                        }
                     }
-                    // TODO En passant
+                    if (file != 7 && peices[ahead + 1] && peices[ahead + 1] >> 3 == enemy) {
+                        if (promotion) {
+                            moves.emplace_back(this, s, ahead + 1, legalFlag | KNIGHT);
+                            moves.emplace_back(this, s, ahead + 1, legalFlag | BISHOP);
+                            moves.emplace_back(this, s, ahead + 1, legalFlag | ROOK);
+                            moves.emplace_back(this, s, ahead + 1, legalFlag | QUEEN);
+                        } else {
+                            moves.emplace_back(this, s, ahead + 1, legalFlag);
+                        }
+                    }
                     break;
 
                 case KNIGHT:
@@ -632,7 +783,7 @@ public:
                     for (uint8 j = 1; j < KNIGHT_MOVES[s][0]; ++j) {
                         t = KNIGHT_MOVES[s][j];
                         if ((!peices[t] || peices[t] >> 3 == enemy) && (!checks || checkingSquares.count(t))) {
-                            moves.emplace_back(s, t, this, !pinned);
+                            moves.emplace_back(this, s, t, legalFlag);
                         }
                     }
                     break;
@@ -646,7 +797,7 @@ public:
 
                     for (uint8 t = s - 8; t < DIRECTION_BOUNDS[s][B]; t -= 8) {
                         if ((!peices[t] || peices[t] >> 3 == enemy) && (!checks || checkingSquares.count(t))) {
-                            moves.emplace_back(s, t, this, !pinned);
+                            moves.emplace_back(this, s, t, legalFlag);
                         }
                         if (peices[t]) {
                             break;
@@ -655,7 +806,7 @@ public:
 
                     for (uint8 t = s + 8; t < DIRECTION_BOUNDS[s][F]; t += 8) {
                         if ((!peices[t] || peices[t] >> 3 == enemy) && (!checks || checkingSquares.count(t))) {
-                            moves.emplace_back(s, t, this, !pinned);
+                            moves.emplace_back(this, s, t, legalFlag);
                         }
                         if (peices[t]) {
                             break;
@@ -664,7 +815,7 @@ public:
 
                     for (uint8 t = s - 1; t < DIRECTION_BOUNDS[s][L]; t -= 1) {
                         if ((!peices[t] || peices[t] >> 3 == enemy) && (!checks || checkingSquares.count(t))) {
-                            moves.emplace_back(s, t, this, !pinned);
+                            moves.emplace_back(this, s, t, legalFlag);
                         }
                         if (peices[t]) {
                             break;
@@ -673,7 +824,7 @@ public:
 
                     for (uint8 t = s + 1; t < DIRECTION_BOUNDS[s][R]; t += 1) {
                         if ((!peices[t] || peices[t] >> 3 == enemy) && (!checks || checkingSquares.count(t))) {
-                            moves.emplace_back(s, t, this, !pinned);
+                            moves.emplace_back(this, s, t, legalFlag);
                         }
                         if (peices[t]) {
                             break;
@@ -687,7 +838,7 @@ public:
 
                     for (uint8 t = s - 9; t < DIRECTION_BOUNDS[s][BL]; t -= 9) {
                         if ((!peices[t] || peices[t] >> 3 == enemy) && (!checks || checkingSquares.count(t))) {
-                            moves.emplace_back(s, t, this, !pinned);
+                            moves.emplace_back(this, s, t, legalFlag);
                         }
                         if (peices[t]) {
                             break;
@@ -696,7 +847,7 @@ public:
 
                     for (uint8 t = s + 9; t < DIRECTION_BOUNDS[s][FR]; t += 9) {
                         if ((!peices[t] || peices[t] >> 3 == enemy) && (!checks || checkingSquares.count(t))) {
-                            moves.emplace_back(s, t, this, !pinned);
+                            moves.emplace_back(this, s, t, legalFlag);
                         }
                         if (peices[t]) {
                             break;
@@ -705,7 +856,7 @@ public:
 
                     for (uint8 t = s - 7; t < DIRECTION_BOUNDS[s][BR]; t -= 7) {
                         if ((!peices[t] || peices[t] >> 3 == enemy) && (!checks || checkingSquares.count(t))) {
-                            moves.emplace_back(s, t, this, !pinned);
+                            moves.emplace_back(this, s, t, legalFlag);
                         }
                         if (peices[t]) {
                             break;
@@ -714,7 +865,7 @@ public:
 
                     for (uint8 t = s + 7; t < DIRECTION_BOUNDS[s][FL]; t += 7) {
                         if ((!peices[t] || peices[t] >> 3 == enemy) && (!checks || checkingSquares.count(t))) {
-                            moves.emplace_back(s, t, this, !pinned);
+                            moves.emplace_back(this, s, t, legalFlag);
                         }
                         if (peices[t]) {
                             break;
@@ -728,7 +879,7 @@ public:
                     for (uint8 j = 1; j < KING_MOVES[s][0]; ++j) {
                         t = KING_MOVES[s][j];
                         if (!peices[t] || peices[t] >> 3 == enemy) {
-                            moves.emplace_back(s, t, this, false);
+                            moves.emplace_back(this, s, t, Move::NONE);
                         }
                     }
             }
@@ -764,24 +915,30 @@ public:
         
         // Update zobrist hash for moving peice
         if (move.flags & Move::PROMOTION) {
-            zobrist ^= ZOBRIST_PEICE_KEYS[color][PAWN][move.startSquare];
-            zobrist ^= ZOBRIST_PEICE_KEYS[color][moving][move.targetSquare];
-            moving = color << 3 + PAWN;
+            zobrist ^= ZOBRIST_PEICE_KEYS[color][PAWN - 1][move.startSquare];
+            zobrist ^= ZOBRIST_PEICE_KEYS[color][moving - 1][move.targetSquare];
+            moving = PAWN;
         
         } else { 
-            zobrist ^= ZOBRIST_PEICE_KEYS[color][moving][move.startSquare];
-            zobrist ^= ZOBRIST_PEICE_KEYS[color][moving][move.targetSquare];
+            zobrist ^= ZOBRIST_PEICE_KEYS[color][moving - 1][move.startSquare];
+            zobrist ^= ZOBRIST_PEICE_KEYS[color][moving - 1][move.targetSquare];
         }
 
         // Update zobrist hash and peice indices set for capture
-        if (move.capturedPeice) {
-            zobrist ^= ZOBRIST_PEICE_KEYS[enemy][move.capturedPeice % (1 << 3)][move.targetSquare];
+        if (move.flags & Move::EN_PASSANT) {
+            uint8 captureSquare = move.targetSquare - 8 + 16 * color;
+            peices[captureSquare] = 0;
+            zobrist ^= ZOBRIST_PEICE_KEYS[enemy][move.capturedPeice % (1 << 3) - 1][captureSquare];
+            peiceIndices[enemy].erase(captureSquare);
+
+        } else if (move.capturedPeice) {
+            zobrist ^= ZOBRIST_PEICE_KEYS[enemy][move.capturedPeice % (1 << 3) - 1][move.targetSquare];
             peiceIndices[enemy].erase(move.targetSquare);
         }
 
         // increment counters
         ++totalHalfmoves;
-        if (move.capturedPeice || moving == color + PAWN) {
+        if (move.capturedPeice || moving == PAWN) {
             halfmovesSincePawnMoveOrCapture.push(0);
         } else {
             uint8 prev = halfmovesSincePawnMoveOrCapture.top();
@@ -805,25 +962,19 @@ public:
                 // Queenside castling
                 peices[castlingRank + 3] = peices[castlingRank];
                 peices[castlingRank] = 0;
-                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank + 3];
-                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank];
+                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK - 1][castlingRank + 3];
+                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK - 1][castlingRank];
                 peiceIndices[color].erase(castlingRank);
                 peiceIndices[color].insert(castlingRank + 3);
-                
-                queensideCastlingRightsLost[color] = totalHalfmoves;
-                zobrist ^= ZOBRIST_QUEENSIDE_CASTLING_KEYS[color];
                 
             } else {
                 // Kingside castling
                 peices[castlingRank + 5] = peices[castlingRank + 7];
                 peices[castlingRank + 7] = 0;
-                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank + 5];
-                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank + 7];
+                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK - 1][castlingRank + 5];
+                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK - 1][castlingRank + 7];
                 peiceIndices[color].erase(castlingRank + 7);
                 peiceIndices[color].insert(castlingRank + 5);
-                
-                kingsideCastlingRightsLost[color] = totalHalfmoves;
-                zobrist ^= ZOBRIST_KINGSIDE_CASTLING_KEYS[color];
             }
         }
 
@@ -870,24 +1021,30 @@ public:
         
         // Undo zobrist hash for moving peice
         if (move.flags & Move::PROMOTION) {
-            zobrist ^= ZOBRIST_PEICE_KEYS[color][PAWN][move.startSquare];
-            zobrist ^= ZOBRIST_PEICE_KEYS[color][moving][move.targetSquare];
-            moving = color << 3 + PAWN;
+            zobrist ^= ZOBRIST_PEICE_KEYS[color][PAWN - 1][move.startSquare];
+            zobrist ^= ZOBRIST_PEICE_KEYS[color][moving - 1][move.targetSquare];
+            moving = PAWN;
         
         } else { 
-            zobrist ^= ZOBRIST_PEICE_KEYS[color][moving][move.startSquare];
-            zobrist ^= ZOBRIST_PEICE_KEYS[color][moving][move.targetSquare];
+            zobrist ^= ZOBRIST_PEICE_KEYS[color][moving - 1][move.startSquare];
+            zobrist ^= ZOBRIST_PEICE_KEYS[color][moving - 1][move.targetSquare];
         }
 
         // undo zobrist hash and peice indices set for capture
-        if (move.capturedPeice) {
-            zobrist ^= ZOBRIST_PEICE_KEYS[enemy][move.capturedPeice % (1 << 3)][move.targetSquare];
+        if (move.flags & Move::EN_PASSANT) {
+            uint8 captureSquare = move.targetSquare - 8 + 16 * color;
+            peices[captureSquare] = move.capturedPeice;
+            zobrist ^= ZOBRIST_PEICE_KEYS[enemy][move.capturedPeice % (1 << 3) - 1][captureSquare];
+            peiceIndices[enemy].insert(captureSquare);
+
+        } else if (move.capturedPeice) {
+            zobrist ^= ZOBRIST_PEICE_KEYS[enemy][move.capturedPeice % (1 << 3) - 1][move.targetSquare];
             peiceIndices[enemy].insert(move.targetSquare);
         }
 
         // decrement counters
         --totalHalfmoves;
-        if (move.capturedPeice || moving == color + PAWN) {
+        if (move.capturedPeice || moving == PAWN) {
             halfmovesSincePawnMoveOrCapture.pop();
         } else {
             uint8 prev = halfmovesSincePawnMoveOrCapture.top();
@@ -897,7 +1054,7 @@ public:
 
         // undo peices array
         peices[move.startSquare] = moving;
-        peices[move.targetSquare] = move.capturedPeice;
+        peices[move.targetSquare] = (move.flags & Move::EN_PASSANT) ? 0 : move.capturedPeice;
         
         // undo peice indices set
         peiceIndices[color].erase(move.targetSquare);
@@ -911,25 +1068,19 @@ public:
                 // Queenside castling
                 peices[castlingRank] = peices[castlingRank + 3];
                 peices[castlingRank + 3] = 0;
-                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank + 3];
-                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank];
+                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK - 1][castlingRank + 3];
+                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK - 1][castlingRank];
                 peiceIndices[color].erase(castlingRank + 3);
                 peiceIndices[color].insert(castlingRank);
-                
-                queensideCastlingRightsLost[color] = 0;
-                zobrist ^= ZOBRIST_QUEENSIDE_CASTLING_KEYS[color];
                 
             } else {
                 // Kingside castling
                 peices[castlingRank + 7] = peices[castlingRank + 5];
                 peices[castlingRank + 5] = 0;
-                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank + 5];
-                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK][castlingRank + 7];
+                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK - 1][castlingRank + 5];
+                zobrist ^= ZOBRIST_PEICE_KEYS[color][ROOK - 1][castlingRank + 7];
                 peiceIndices[color].erase(castlingRank + 5);
                 peiceIndices[color].insert(castlingRank + 7);
-                
-                kingsideCastlingRightsLost[color] = 0;
-                zobrist ^= ZOBRIST_KINGSIDE_CASTLING_KEYS[color];
             }
         }
 
@@ -956,16 +1107,6 @@ public:
     }
 
 private:
-    // PRIVATE DEFINITIONS
-    static constexpr uint8 WHITE = 0b0000;
-    static constexpr uint8 BLACK = 0b1000;
-    static constexpr uint8 PAWN =   0b001;
-    static constexpr uint8 KNIGHT = 0b010;
-    static constexpr uint8 BISHOP = 0b011;
-    static constexpr uint8 ROOK =   0b100;
-    static constexpr uint8 QUEEN =  0b101;
-    static constexpr uint8 KING =   0b110;
-
     // PRIVATE MEMBERS
     /**
      * color and peice type at every square (index [0, 63] -> [a1, h8])
@@ -1018,7 +1159,7 @@ private:
      * @param algebraic notation for position on chess board (ex e3, a1, c8)
      * @return uint8 index [0, 63] -> [a1, h8] of square on board
      */
-    static uint8 algebraicNotationToBoardIndex(const std::string &algebraic)
+    static uint8 algebraicToIndex(const std::string &algebraic)
     {
         if (algebraic.size() != 2) {
             throw std::invalid_argument("Algebraic notation should only be two letters long!");
@@ -1032,6 +1173,18 @@ private:
         }
 
         return (rank - '1') * 8 + (file - 'a');
+    }
+
+    /**
+     * @param boardIndex index [0, 63] -> [a1, h8] of square on board
+     * @return std::string notation for position on chess board (ex e3, a1, c8)
+     */
+    static std::string& indexToAlgebraic(uint8 boardIndex)
+    {
+        char file = 'a' + boardIndex % 8;
+        char rank = '1' + boardIndex >> 3;
+        
+        return {file, rank};
     }
 };
 

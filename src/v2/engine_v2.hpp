@@ -1,5 +1,9 @@
 #include "./chess.hpp"
 #include "board.hpp"
+#include <chrono>
+#include <string>
+#include <stdexcept>
+
 
 class EngineV2 : public StandardEngine
 {
@@ -9,21 +13,41 @@ public:
         // TODO
     }
 
-    void loadFEN() override
+    std::vector<StandardMove> generateLegalMoves() override
     {
         // TODO
     }
 
-    StandardMove computerMove() override
+    void loadFEN(std::string &fenString) override
     {
         // TODO
     }
 
-    void inputMove() override
+    StandardMove computerMove(std::chrono::milliseconds thinkTime) override
+    {
+        // TODO
+    }
+
+    void inputMove(StandardMove &move) override
+    {
+        // TODO
+    }
+
+
+    bool inCheck() override
+    {
+        // TODO
+    }
+
+    bool isDraw() override
     {
         // TODO
     }
 
 private:
+    /**
+     * Member for storing the current position being analysed
+     */
     Board board;
+
 };
