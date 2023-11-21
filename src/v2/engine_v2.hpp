@@ -8,6 +8,7 @@
 class EngineV2 : public StandardEngine
 {
 public:
+    EngineV2(std::string &fenString) : board(fenString) {}
     EngineV2() : board() {}
 
     void loadStartingPosition() override
@@ -43,16 +44,37 @@ public:
 
     void inputMove(StandardMove &move) override
     {
-        // TODO
-    }
+        std::vector<StandardMove> legalMoves = generateLegalMoves();
 
+        if (isDraw()) {
+            throw std::runtime_error("Game is drawn! Cannot input move!");
+        }
+
+        if (legalMoves.size() == 0 && inCheck()) {
+            throw std::runtime_error("Player to move is in checkmate Cannot input move!");
+        }
+
+        for (StandardMove &legalMove : legalMoves) {
+            if (move == legalMove) {
+                board.makeMove(Board::Move(&board, move.startSquare, move.targetSquare, move.promotion));
+                return;
+            }
+        }
+
+        throw std::runtime_error("inputted move is not legal!");
+    }
 
     bool inCheck() override
     {
-        // TODO
+        return board.inCheck();
     }
 
     bool isDraw() override
+    {
+        return board.isDraw();
+    }
+
+    int perft(int depth) override
     {
         // TODO
     }

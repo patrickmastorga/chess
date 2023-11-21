@@ -70,10 +70,12 @@ public:
          */
         int16 moveStrengthGuess;
 
+        
+        // CONSTRUCTORS
         /**
-         * Construct a new Move object from the given board
+         * Construct a new Move object from the given board and given flags (en_passant, castle, promotion, etc.)
          */
-        Move(const Board *board, uint8 start, uint8 target, uint8 givenFlags=NONE) : startSquare(start), targetSquare(target), flags(givenFlags), moveStrengthGuess(0)
+        Move(const Board *board, uint8 start, uint8 target, uint8 givenFlags) : startSquare(start), targetSquare(target), flags(givenFlags), moveStrengthGuess(0)
         {
             movingPeice = board->peices[start];
             uint8 color = movingPeice & 0b11111000;
@@ -91,6 +93,14 @@ public:
             if (capturedPeice) {
                 flags |= CAPTURE;
             }
+        }
+
+        /**
+         * @brief Construct a new Move object from the given board with unknown flags (en_passant, castle, promotion, etc.)
+         */
+        Move(const Board *board, uint8 start, uint8 target, uint8 promotion) : startSquare(start), targetSquare(target), moveStrengthGuess(0)
+        {
+            // TODO
         }
 
 
@@ -1108,6 +1118,10 @@ public:
             return true;
         }
 
+        if (move.flags & Move::CASTLE) {
+            // TODO
+        }
+
         uint8 color = totalHalfmoves % 2;
         makeMove(move);
         bool legal = !inCheck(color);
@@ -1231,6 +1245,11 @@ public:
     bool inCheck() const
     {
         return inCheck(totalHalfmoves % 2);
+    }
+    
+    bool isDraw() const
+    {
+        // TODO
     }
     
     /**

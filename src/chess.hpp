@@ -24,6 +24,14 @@ struct StandardMove
     int promotion;
     
     StandardMove(int start, int target, int promote) : startSquare(start), targetSquare(target), promotion(promote) {}
+
+    // Equality operator
+    bool operator==(const StandardMove& other) const
+    {
+        return this->startSquare == other.startSquare
+            && this->targetSquare == other.targetSquare
+            && this->promotion == other.promotion;
+    }
 };
 
 /**
@@ -68,4 +76,11 @@ public:
      * @return true if the game has reached a draw
      */
     virtual bool isDraw() = 0;
+
+    /**
+     * Runs a move generation test on the current position
+     * Prints a per move readout to the console
+     * @return number of total positions a certain depth away
+     */
+    virtual int perft(int depth) = 0;
 };
