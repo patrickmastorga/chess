@@ -76,6 +76,8 @@ public:
 
     int perft(int depth) override
     {
+        // IMPROVMENT IDEAS:
+        // - IGNORE EN-PASSANT targets in zobrist hashing (not even needed for three-fold repition - easy fix)
         // TODO
     }
 

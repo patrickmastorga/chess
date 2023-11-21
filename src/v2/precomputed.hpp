@@ -103,7 +103,7 @@ const uint8 DIRECTION_BOUNDS[64][8] = {
 
 /**
  * Conatins all legal "jumps" a knight can make from a given square [0, 63] -> [a1, h8]
- * First value is index where jumps stop, the rest are amounts to jump
+ * First value is index where jumps stop, the rest are the indices of the target square of the jumps
  */
 const uint8 KNIGHT_MOVES[64][9] = {
     {3, 10, 17, 0, 0, 0, 0, 0, 0},
@@ -172,6 +172,10 @@ const uint8 KNIGHT_MOVES[64][9] = {
     {3, 46, 53, 0, 0, 0, 0, 0, 0}
 };
 
+/**
+ * Conatins all legal moves a king can make from a given square [0, 63] -> [a1, h8]
+ * First value is index where moves stop, the rest are the indices of the target square of the move
+ */
 const uint8 KING_MOVES[64][9] = {
     {4, 1, 8, 9, 0, 0, 0, 0, 0},
     {6, 0, 2, 9, 8, 10, 0, 0, 0},
@@ -239,6 +243,10 @@ const uint8 KING_MOVES[64][9] = {
     {4, 62, 55, 54, 0, 0, 0, 0, 0}
 };
 
+/**
+ * Table of random 64 bit keys for every color/peice/square combination
+ * Used for zobrist hashing
+ */
 const uint64 ZOBRIST_PEICE_KEYS[2][6][64] = {
     {
         {
@@ -366,10 +374,22 @@ const uint64 ZOBRIST_PEICE_KEYS[2][6][64] = {
     }
 };
 
+/**
+ * Random 64 bit key for denoting whose turn it is
+ */
 constexpr uint64 ZOBRIST_TURN_KEY = 3670193273846374846;
 
+/**
+ * Random 64 bit keys for denoting kingside castling rights
+ */
 const uint64 ZOBRIST_KINGSIDE_CASTLING_KEYS[2] = {10576097785241632556, 10481359066645510032};
 
+/**
+ * Random 64 bit keys for denoting queenside castling rights
+ */
 const uint64 ZOBRIST_QUEENSIDE_CASTLING_KEYS[2] = {10360706640968720380, 15283939811958844907};
 
+/**
+ * Random 64 bit keys for denoting en passant target squares
+ */
 const uint64 ZOBRIST_EN_PASSANT_KEYS[8] = {1025402192216905856, 14518226330951452624, 2331440303908927641, 1108308653662550523, 7105917128754757782, 7590507085247393227, 2507801956091153170, 14828577185325906953};
