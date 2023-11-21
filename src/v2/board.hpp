@@ -9,6 +9,8 @@
 #include <cctype>
 
 #include "precomputed.hpp"
+#include "chess.hpp"
+
 
 typedef std::uint_fast8_t uint8;
 typedef std::int_fast8_t int8;
@@ -98,9 +100,35 @@ public:
         /**
          * @brief Construct a new Move object from the given board with unknown flags (en_passant, castle, promotion, etc.)
          */
-        Move(const Board *board, uint8 start, uint8 target, uint8 promotion) : startSquare(start), targetSquare(target), moveStrengthGuess(0)
+        Move(const Board *board, uint8 start, uint8 target, bool legal, uint8 promotion=0) : startSquare(start), targetSquare(target), flags(0), moveStrengthGuess(0)
         {
-            // TODO
+            movingPeice = board->peices[start];
+            uint8 color = movingPeice & 0b11111000;
+
+            capturedPeice = board->peices[target];
+
+            if (movingPeice % (1 << 3) == KING && std::abs(target - start) == 2) {
+                flags |= CASTLE;
+            }
+
+            if (movingPeice % (1 << 3) == PAWN) {
+                if (target >> 3 == 0 || target >> 3 == 7) {
+                    flags |= promotion ? promotion : QUEEN;
+                    movingPeice = flags & PROMOTION;
+                
+                } else if (((target - start) % 7 == 0 || (target - start) % 9 == 0) && !capturedPeice) {
+                    flags |= EN_PASSANT;
+                    capturedPeice = !color + PAWN;
+                }
+            }
+
+            if (capturedPeice) {
+                flags |= CAPTURE;
+            }
+
+            if (legal) {
+                flags |= LEGAL;
+            }
         }
 
 
@@ -116,8 +144,9 @@ public:
         /**
          * Override stream insertion operator to display info about the move
          */
-        std::ostream& operator<<(std::ostream& os) const {
-            os << "(" << Board::indexToAlgebraic(startSquare) << " -> " << Board::indexToAlgebraic(targetSquare) << ")";
+        std::ostream& operator<<(std::ostream& os) const
+        {
+            os << "(" << ChessHelpers::boardIndexToAlgebraicNotation(startSquare) << " -> " << ChessHelpers::boardIndexToAlgebraicNotation(targetSquare) << ")";
             return os;
         }
 
@@ -272,7 +301,7 @@ public:
 
         if (enPassantTarget != "-") {
             try {
-                eligibleEnPassantFile.push(algebraicToIndex(enPassantTarget) % 8);
+                eligibleEnPassantFile.push(ChessHelpers::algebraicNoatationToBoardIndex(enPassantTarget) % 8);
                 zobrist ^= ZOBRIST_EN_PASSANT_KEYS[eligibleEnPassantFile.top()];
             } catch (const std::invalid_argument &e) {
                 throw std::invalid_argument(std::string("Invalid FEN en passant target! ") + e.what());
@@ -329,7 +358,7 @@ public:
     std::vector<Move> pseudoLegalMoves(uint8 flags=Move::NONE) const
     {
         // TODO Backwards check/pin generation for endgame
-        // TODO Better pinned peice generation
+        // TODO Better pinned peice generation (detect if sliding along diagonal of pin)
         
         uint8 color = totalHalfmoves % 2;
         uint8 enemy = !color;
@@ -731,11 +760,11 @@ public:
         }
 
         // Castling
-        if (!kingsideCastlingRightsLost[color]) {
+        if (!kingsideCastlingRightsLost[color] && !checks) {
             uint8 castlingRank = 56 * color;
             moves.emplace_back(this, castlingRank + 4, castlingRank + 6, Move::CASTLE);
         }
-        if (!queensideCastlingRightsLost[color]) {
+        if (!queensideCastlingRightsLost[color] && !checks) {
             uint8 castlingRank = 56 * color;
             moves.emplace_back(this, castlingRank + 4, castlingRank + 2, Move::CASTLE);
         }
@@ -1110,7 +1139,9 @@ public:
     }
 
     /**
-     * @return true if inputted move is legal in the current position
+     * @param move pseudo legal move
+     * @return true if inputted pseudo legal move is legal in the current position
+     * THIS FUNCTION IS SLOW; NOT MEANT TO BE USED WHEN SEARCHIG
      */
     bool isLegal(const Move &move)
     {
@@ -1119,7 +1150,12 @@ public:
         }
 
         if (move.flags & Move::CASTLE) {
-            // TODO
+            // Check if king is in check
+            if (inCheck()) {
+                return false;
+            }
+
+            return castlingMoveIsLegal(move);
         }
 
         uint8 color = totalHalfmoves % 2;
@@ -1247,9 +1283,21 @@ public:
         return inCheck(totalHalfmoves % 2);
     }
     
+    /**
+     * @return true if the last move has put the game into a forced draw
+     * (threefold repitition / 50 move rule)
+     */
     bool isDraw() const
     {
         // TODO
+    }
+    
+    /**
+     * @return Total number of half moves since game start (half move is one player taking a turn)
+     */
+    int halfMoveClock() const
+    {
+        return totalHalfmoves;
     }
     
     /**
@@ -1308,88 +1356,124 @@ private:
     uint64 zobrist;
 
     
-    // PRIVATE METHODS
+    // PRIVATE METHOD
     /**
-     * @param algebraic notation for position on chess board (ex e3, a1, c8)
-     * @return uint8 index [0, 63] -> [a1, h8] of square on board
+     * @param move pseudo legal castling move (castling rights are not lost and king is not in check)
+     * @return true if the castling move is legal in the current position
      */
-    static uint8 algebraicToIndex(const std::string &algebraic)
-    {
-        if (algebraic.size() != 2) {
-            throw std::invalid_argument("Algebraic notation should only be two letters long!");
+    bool castlingMoveIsLegal(const Move &move) {
+        uint8 color = totalHalfmoves % 2;
+        uint8 enemy = !color;
+        uint8 castlingRank = move.startSquare & 0b11111000;
+        // Check if anything is blocking path
+        if (move.targetSquare - castlingRank < 4) {
+            for (uint8 j = move.startSquare - 1; j > castlingRank; --j) {
+                if (peices[j]) {
+                    return false;
+                }
+            }
+        } else {
+            for (uint8 j = move.startSquare + 1; j < castlingRank + 7; ++j) {
+                if (peices[j]) {
+                    return false;
+                }
+            }
         }
 
-        uint8 file = algebraic[0] - 'a';
-        uint8 rank = algebraic[1] - '1';
+        // Check if anything is attacking squares on king's path
+        uint8 s;
+        uint8 end;
+        if (move.targetSquare - castlingRank < 4) {
+            s = castlingRank + 2;
+            end = castlingRank + 3;
+        } else {
+            s = castlingRank + 5;
+            end = castlingRank + 6;
+        }
+        for (; s <= end; ++s) {
+            // Pawn attacks
+            uint8 file = s % 8;
+            uint8 ahead = s + 8 - 16 * color;
+            if (file != 0 && peices[ahead - 1] == enemy + PAWN) {
+                return false;
+            }
+            if (file != 7 && peices[ahead + 1] == enemy + PAWN) {
+                return false;
+            }
 
-        if (file < 0 || file > 7 || rank < 0 || rank > 7) {
-            throw std::invalid_argument("Algebraic notation should be in the form [a-h][1-8]!");
+            // Knight attacks
+            for (uint8 j = 0; j < KNIGHT_MOVES[s][0]; ++j) {
+                if (peices[KNIGHT_MOVES[s][j]] == enemy + KNIGHT) {
+                    return false;
+                }
+            }
+
+            // sliding peice attacks
+            if (color == BLACK >> 3) {
+                for (uint8 j = s - 8; j < DIRECTION_BOUNDS[s][B]; j -= 8) {
+                    if (peices[j]) {
+                        if (peices[j] == enemy + ROOK || peices[j] == enemy + QUEEN) {
+                            return false;
+                        }
+                        break;
+                    }
+                }
+                
+                for (uint8 j = s - 9; j < DIRECTION_BOUNDS[s][BL]; j -= 9) {
+                    if (peices[j]) {
+                        if (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN) {
+                            return false;
+                        }
+                        break;
+                    }
+                }
+
+                for (uint8 j = s - 7; j < DIRECTION_BOUNDS[s][BR]; j -= 7) {
+                    if (peices[j]) {
+                        if (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN) {
+                            return false;
+                        }
+                        break;
+                    }
+                }
+            
+            } else {
+                for (uint8 j = s + 8; j < DIRECTION_BOUNDS[s][F]; j += 8) {
+                    if (peices[j]) {
+                        if (peices[j] == enemy + ROOK || peices[j] == enemy + QUEEN) {
+                            return false;
+                        }
+                        break;
+                    }
+                }
+
+                for (uint8 j = s + 9; j < DIRECTION_BOUNDS[s][FR]; j += 9) {
+                    if (peices[j]) {
+                        if (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN) {
+                            return false;
+                        }
+                        break;
+                    }
+                }
+
+                for (uint8 j = s + 7; j < DIRECTION_BOUNDS[s][FL]; j += 7) {
+                    if (peices[j]) {
+                        if (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN) {
+                            return false;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // King attacks
+            for (uint8 j = 0; j < KING_MOVES[s][0]; ++j) {
+                if (peices[KING_MOVES[s][j]] == enemy + KING) {
+                    return false;
+                }
+            }
         }
 
-        return (rank - '1') * 8 + (file - 'a');
-    }
-
-    /**
-     * @param boardIndex index [0, 63] -> [a1, h8] of square on board
-     * @return std::string notation for position on chess board (ex e3, a1, c8)
-     */
-    static std::string& indexToAlgebraic(uint8 boardIndex)
-    {
-        char file = 'a' + boardIndex % 8;
-        char rank = '1' + boardIndex >> 3;
-        
-        return {file, rank};
+        return true;
     }
 };
-
-/*
-
-TODO REGULAR SEARCH
-
-TODO ALPHA BETA SEARCH WITH MOVE ORDERING
-
-TODO ALPHA BETA SEARCH WITH TRANSPOSITION TABLE
-
-function alpha_beta_search(node, depth, alpha, beta):
-    if depth == 0 or node is a terminal node:
-        return evaluate(node)
-
-    transposition_entry = transposition_table_lookup(node)
-    if transposition_entry is not empty and transposition_entry.depth >= depth:
-        if transposition_entry.flag == EXACT:
-            return transposition_entry.value
-        if transposition_entry.flag == LOWER_BOUND:
-            alpha = max(alpha, transposition_entry.value)
-        else:  # transposition_entry.flag == UPPER_BOUND
-            beta = min(beta, transposition_entry.value)
-
-        if alpha >= beta:
-            return transposition_entry.value  # Transposition table cutoff
-
-    if maximizing_player(node):
-        value = -infinity
-        for child in generate_moves(node):
-            value = max(value, alpha_beta_search(child, depth - 1, alpha, beta))
-            alpha = max(alpha, value)
-            if alpha >= beta:
-                break  # Beta cutoff
-    else:  # minimizing player
-        value = infinity
-        for child in generate_moves(node):
-            value = min(value, alpha_beta_search(child, depth - 1, alpha, beta))
-            beta = min(beta, value)
-            if alpha >= beta:
-                break  # Alpha cutoff
-
-    store_transposition_entry(node, value, depth, alpha, beta)
-    return value
-
-
-// For adding to transpostiontion table
-if value == alpha:
-    flag = LOWER_BOUND
-elif value == beta:
-    flag = UPPER_BOUND
-else:
-    flag = EXACT
-*/

@@ -1,6 +1,7 @@
 #include <chrono>
 #include <string>
 #include <vector>
+#include <optional>
 
 /**
  * Struct for represening a chess move
@@ -25,12 +26,23 @@ struct StandardMove
     
     StandardMove(int start, int target, int promote) : startSquare(start), targetSquare(target), promotion(promote) {}
 
-    // Equality operator
+    /**
+     * Override equality operator 
+     */
     bool operator==(const StandardMove& other) const
     {
         return this->startSquare == other.startSquare
             && this->targetSquare == other.targetSquare
             && this->promotion == other.promotion;
+    }
+
+    /**
+     * Override stream insertion operator to display info about the move
+     */
+    friend std::ostream& operator<<(std::ostream& os, const StandardMove &obj)
+    {
+        os << "(" << ChessHelpers::boardIndexToAlgebraicNotation(obj.startSquare) << " -> " << ChessHelpers::boardIndexToAlgebraicNotation(obj.targetSquare) << ")";
+        return os;
     }
 };
 
@@ -43,7 +55,7 @@ public:
     /**
      * Loads the starting position into the engine
      */
-    virtual void loadStartingPosition() = 0;
+    virtual void loadStartingPosition() noexcept = 0;
 
     /**
      * Loads the specified position into the engine
@@ -54,7 +66,12 @@ public:
     /**
      * @return std::vector<StandardMove> of legal moves for the current position
      */
-    virtual std::vector<StandardMove> generateLegalMoves() = 0;
+    virtual std::vector<StandardMove> generateLegalMoves() noexcept = 0;
+
+    /**
+     * @return -1 if black is to move, or 1 if white is to move
+     */
+    virtual int colorToMove() noexcept = 0;
 
     /**
      * @return the engine's best move for a the current position
@@ -68,19 +85,54 @@ public:
     virtual void inputMove(StandardMove &move) = 0;
 
     /**
+     * @return a value if game is over (-1 if black has won, 0 if forced draw, 1 if white has won)
+     */
+    virtual std::optional<int> gameOver() noexcept = 0;
+    
+    /**
      * @return true if the player who is to move is in check
      */
-    virtual bool inCheck() = 0;
-
-    /**
-     * @return true if the game has reached a draw
-     */
-    virtual bool isDraw() = 0;
+    virtual bool inCheck() noexcept = 0;
 
     /**
      * Runs a move generation test on the current position
      * Prints a per move readout to the console
      * @return number of total positions a certain depth away
      */
-    virtual int perft(int depth) = 0;
+    virtual int perft(int depth) noexcept = 0;
 };
+
+namespace ChessHelpers
+{
+    /**
+     * @param algebraic notation for position on chess board (ex e3, a1, c8)
+     * @return uint8 index [0, 63] -> [a1, h8] of square on board
+     */
+    int algebraicNoatationToBoardIndex(const std::string &algebraic)
+    {
+        if (algebraic.size() != 2) {
+            throw std::invalid_argument("Algebraic notation should only be two letters long!");
+        }
+
+        uint8 file = algebraic[0] - 'a';
+        uint8 rank = algebraic[1] - '1';
+
+        if (file < 0 || file > 7 || rank < 0 || rank > 7) {
+            throw std::invalid_argument("Algebraic notation should be in the form [a-h][1-8]!");
+        }
+
+        return (rank - '1') * 8 + (file - 'a');
+    }
+
+    /**
+     * @param boardIndex index [0, 63] -> [a1, h8] of square on board
+     * @return std::string notation for position on chess board (ex e3, a1, c8)
+     */
+    std::string& boardIndexToAlgebraicNotation(uint8 boardIndex)
+    {
+        char file = 'a' + boardIndex % 8;
+        char rank = '1' + boardIndex >> 3;
+        
+        return {file, rank};
+    }
+}
