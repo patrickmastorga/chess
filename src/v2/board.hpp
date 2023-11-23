@@ -1,5 +1,6 @@
 #include <cstdint>
 #include <vector>
+#include <memory>
 #include <stack>
 #include <unordered_set>
 #include <algorithm>
@@ -11,7 +12,6 @@
 #include "precomputed.hpp"
 #include "chess.hpp"
 
-
 typedef std::uint_fast8_t uint8;
 typedef std::int_fast8_t int8;
 typedef std::uint_fast16_t uint16;
@@ -19,64 +19,35 @@ typedef std::int_fast16_t int16;
 typedef std::uint_fast32_t uint32;
 typedef std::uint_fast64_t uint64;
 
-/**
- * class representing the current state of the chess game
- */
+// class representing the current state of the chess game
 class Board
 {
 public:
-    // DEFINITIONS
-    static constexpr uint8 WHITE = 0b0000;
-    static constexpr uint8 BLACK = 0b1000;
-    static constexpr uint8 PAWN =   0b001;
-    static constexpr uint8 KNIGHT = 0b010;
-    static constexpr uint8 BISHOP = 0b011;
-    static constexpr uint8 ROOK =   0b100;
-    static constexpr uint8 QUEEN =  0b101;
-    static constexpr uint8 KING =   0b110;
-
-
     // MOVE STRUCT
-    /**
-     * struct for containing info about a move
-     */
+    // struct for containing info about a move
     struct Move
     {
-        /**
-         * Starting square of the move [0, 63] -> [a1, h8]
-         */
+        // Starting square of the move [0, 63] -> [a1, h8]
         uint8 startSquare;
-
-        /**
-         * Ending square of the move [0, 63] -> [a1, h8]
-         */
+        
+        // Ending square of the move [0, 63] -> [a1, h8]
         uint8 targetSquare;
 
-        /**
-         * Peice and color of moving peice
-         */
+        // Peice and color of moving peice
         uint8 movingPeice;
 
-        /**
-         * Peice and color of captured peice
-         */
+        // Peice and color of captured peice
         uint8 capturedPeice;
 
-        /**
-         * 8 bit flags of move
-         */
+        // 8 bit flags of move
         uint8 flags;
 
-        /**
-         * Heuristic geuss for the strength of the move (used for move ordering)
-         */
+        // Heuristic geuss for the strength of the move (used for move ordering)
         int16 moveStrengthGuess;
 
         
         // CONSTRUCTORS
-        /**
-         * Construct a new Move object from the given board and given flags (en_passant, castle, promotion, etc.)
-         */
+        // Construct a new Move object from the given board and given flags (en_passant, castle, promotion, etc.)
         Move(const Board *board, uint8 start, uint8 target, uint8 givenFlags) : startSquare(start), targetSquare(target), flags(givenFlags), moveStrengthGuess(0)
         {
             movingPeice = board->peices[start];
@@ -97,9 +68,7 @@ public:
             }
         }
 
-        /**
-         * @brief Construct a new Move object from the given board with unknown flags (en_passant, castle, promotion, etc.)
-         */
+        // @brief Construct a new Move object from the given board with unknown flags (en_passant, castle, promotion, etc.)
         Move(const Board *board, uint8 start, uint8 target, bool legal, uint8 promotion=0) : startSquare(start), targetSquare(target), flags(0), moveStrengthGuess(0)
         {
             movingPeice = board->peices[start];
@@ -133,17 +102,29 @@ public:
 
 
         // PUBLIC METHODS
-        /**
-         * Generates a heurusitic guess for the strength of a move based on information from the board
-         */
+        // Generates a heurusitic guess for the strength of a move based on information from the board
         void initializeMoveStrengthGuess(Board *Board)
         {
             // TODO
         }
 
-        /**
-         * Override stream insertion operator to display info about the move
-         */
+        // Override equality operator with other move
+        bool operator==(const Move& other) const
+        {
+            return this->startSquare == other.startSquare
+                && this->targetSquare == other.targetSquare
+                && this->flags & PROMOTION == other.flags & PROMOTION;
+        }
+
+        // Override equality operator with standard move
+        bool operator==(const StandardMove& other) const
+        {
+            return this->startSquare == other.startSquare
+                && this->targetSquare == other.targetSquare
+                && this->flags & PROMOTION - KNIGHT + 1 == other.promotion;
+        }
+
+        // Override stream insertion operator to display info about the move
         std::ostream& operator<<(std::ostream& os) const
         {
             os << "(" << ChessHelpers::boardIndexToAlgebraicNotation(startSquare) << " -> " << ChessHelpers::boardIndexToAlgebraicNotation(targetSquare) << ")";
@@ -160,13 +141,10 @@ public:
         static constexpr uint8 CAPTURE    = 0b01000000;
         static constexpr uint8 CHECK      = 0b10000000;
     };
-    
-    
+
+
     // CONSTRUCTORS
-    /**
-     * Construct a new Board object from fen string
-     * @param fenString string in Forsyth–Edwards Notation
-     */
+    // Construct a new Board object from fen string
     Board(const std::string &fenString)
     {
         std::istringstream fenStringStream(fenString);
@@ -343,18 +321,12 @@ public:
         }
     }
     
-    /**
-     * Construct a new Board object with the starting position
-     */
+    // Construct a new Board object with the starting position
     Board() : Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") {}
 
 
     // PUBLIC METHODS
-    /**
-     * Generates pseudo-legal moves for the current position
-     * @param flags only generate moves with the given flags
-     * @return std::vector<Move> of pseudo-legal moves for a position
-     */
+    // Generates pseudo-legal moves for the current position
     std::vector<Move> pseudoLegalMoves(uint8 flags=Move::NONE) const
     {
         // TODO Backwards check/pin generation for endgame
@@ -929,14 +901,55 @@ public:
         return moves;
     }
 
-    /**
-     * update the board based on the inputted move
-     */
-    void makeMove(const Move &move)
+    // Generates legal moves for the current position
+    // Not as fast as pseudoLegalMoves() for searching
+    std::vector<Move> legalMoves()
+    {
+        std::vector<Move> moves = pseudoLegalMoves();
+
+        moves.erase(std::remove_if(moves.begin(), moves.end(), [&](Move m) { return !isLegal(m); }), moves.end());
+        return moves;
+    }
+
+    // update the board based on the inputted move (must be pseudo legal)
+    // returns true if move was legal and process completed
+    bool makeMove(Move &move)
     {
         uint8 color = move.movingPeice >> 3;
         uint8 enemy = !color;
         uint8 moving = move.movingPeice % (1 << 3);
+
+        // Seperately check legality of castling moves
+        if (move.flags & Move::CASTLE && !(move.flags & Move::LEGAL)) {
+            if (!castlingMoveIsLegal(move)) {
+                return false;
+            }
+            move.flags |= Move::LEGAL;
+        }
+        
+        // Update peices array first to check legality
+        peices[move.startSquare] = 0;
+        peices[move.targetSquare] = move.movingPeice;
+        if (move.flags & Move::EN_PASSANT) {
+            peices[move.targetSquare - 8 + 16 * color] = 0;
+        }
+
+        // Check if move was illegal
+        if (!(move.flags & Move::LEGAL) && inCheck(color)) {
+            // Undo change
+            peices[move.startSquare] = (move.flags & Move::PROMOTION) ? color + PAWN : move.movingPeice;;
+            peices[move.targetSquare] = (move.flags & Move::EN_PASSANT) ? 0 : move.capturedPeice;
+            if (move.flags & Move::EN_PASSANT) {
+                peices[move.targetSquare - 8 + 16 * color] = move.capturedPeice;
+            }
+            return false;
+        }
+
+        move.flags |= Move::LEGAL;
+
+        // Update peice indices set
+        peiceIndices[color].erase(move.startSquare);
+        peiceIndices[color].insert(move.targetSquare);
 
         // En passant file
         if (eligibleEnPassantFile.top() >= 0) {
@@ -967,7 +980,6 @@ public:
         // Update zobrist hash and peice indices set for capture
         if (move.flags & Move::EN_PASSANT) {
             uint8 captureSquare = move.targetSquare - 8 + 16 * color;
-            peices[captureSquare] = 0;
             zobrist ^= ZOBRIST_PEICE_KEYS[enemy][move.capturedPeice % (1 << 3) - 1][captureSquare];
             peiceIndices[enemy].erase(captureSquare);
 
@@ -985,14 +997,6 @@ public:
             halfmovesSincePawnMoveOrCapture.pop();
             halfmovesSincePawnMoveOrCapture.push(prev + 1);
         }
-
-        // Update peices array
-        peices[move.startSquare] = 0;
-        peices[move.targetSquare] = move.movingPeice;
-
-        // Update peice indices set
-        peiceIndices[color].erase(move.startSquare);
-        peiceIndices[color].insert(move.targetSquare);
 
         // Update rooks for castling
         if (move.flags & Move::CASTLE) {
@@ -1038,9 +1042,7 @@ public:
         }
     }
 
-    /**
-     * update the board based on the inputted move
-     */
+    // update the board based on the inputted move (must have just been move previously played)
     void unmakeMove(const Move &move)
     {
         uint8 color = move.movingPeice >> 3;
@@ -1093,7 +1095,7 @@ public:
         }
 
         // undo peices array
-        peices[move.startSquare] = moving;
+        peices[move.startSquare] = color + moving;
         peices[move.targetSquare] = (move.flags & Move::EN_PASSANT) ? 0 : move.capturedPeice;
         
         // undo peice indices set
@@ -1137,37 +1139,38 @@ public:
             kingIndex[color] = move.startSquare;
         }
     }
-
-    /**
-     * @param move pseudo legal move
-     * @return true if inputted pseudo legal move is legal in the current position
-     * THIS FUNCTION IS SLOW; NOT MEANT TO BE USED WHEN SEARCHIG
-     */
-    bool isLegal(const Move &move)
+  
+    // return true if the player about to move is in check
+    bool inCheck() const
     {
-        if (move.flags & Move::LEGAL) {
-            return true;
-        }
-
-        if (move.flags & Move::CASTLE) {
-            // Check if king is in check
-            if (inCheck()) {
-                return false;
-            }
-
-            return castlingMoveIsLegal(move);
-        }
-
-        uint8 color = totalHalfmoves % 2;
-        makeMove(move);
-        bool legal = !inCheck(color);
-        unmakeMove(move);
-        return legal;
+        return inCheck(totalHalfmoves % 2);
+    }
+    
+    // @return true if the last move has put the game into a forced draw (threefold repitition / 50 move rule)
+    bool isDraw() const
+    {
+        // TODO
     }
 
-    /**
-     * @return true if the king belonging to the inputted color is currently being attacked
-     */
+    // returns total half moves since game start (half move is one player taking a turn)
+    int getTotalHalfmoves() const
+    {
+        return totalHalfmoves;
+    }
+
+private:
+    // DEFINITIONS
+    static constexpr uint8 WHITE = 0b0000;
+    static constexpr uint8 BLACK = 0b1000;
+    static constexpr uint8 PAWN =   0b001;
+    static constexpr uint8 KNIGHT = 0b010;
+    static constexpr uint8 BISHOP = 0b011;
+    static constexpr uint8 ROOK =   0b100;
+    static constexpr uint8 QUEEN =  0b101;
+    static constexpr uint8 KING =   0b110;
+
+    // PRIVATE METHODS  
+    // return true if the king belonging to the inputted color is currently being attacked
     bool inCheck(uint8 color) const
     {
         // TODO Backwards check searching during endgame
@@ -1275,92 +1278,31 @@ public:
         return false;
     }
 
-    /**
-     * @return true if the player who is to move is in check
-     */
-    bool inCheck() const
+    // return true if inputted pseudo legal move is legal in the current position
+    bool isLegal(Move &move)
     {
-        return inCheck(totalHalfmoves % 2);
-    }
-    
-    /**
-     * @return true if the last move has put the game into a forced draw
-     * (threefold repitition / 50 move rule)
-     */
-    bool isDraw() const
-    {
-        // TODO
-    }
-    
-    /**
-     * @return Total number of half moves since game start (half move is one player taking a turn)
-     */
-    int halfMoveClock() const
-    {
-        return totalHalfmoves;
-    }
-    
-    /**
-     * @return 64 bit hashing of the current state of the game
-     */
-    uint64 zobristHash() const
-    {
-        return zobrist;
+        if (move.flags & Move::LEGAL) {
+            return true;
+        }
+
+        if (move.flags & Move::CASTLE) {
+            // Check if king is in check
+            if (inCheck()) {
+                return false;
+            }
+
+            return castlingMoveIsLegal(move);
+        }
+
+        uint8 color = totalHalfmoves % 2;
+        makeMove(move);
+        bool legal = !inCheck(color);
+        unmakeMove(move);
+        return legal;
     }
 
-private:
-    // PRIVATE MEMBERS
-    /**
-     * color and peice type at every square (index [0, 63] -> [a1, h8])
-     */
-    uint8 peices[64];
-
-    /**
-     * contains the halfmove number when the kingside castling rights were lost for white or black (index 0 and 1)
-     */
-    uint16 kingsideCastlingRightsLost[2];
-
-    /**
-     * contains the halfmove number when the queenside castling rights were lost for white or black (index 0 and 1)
-     */
-    uint16 queensideCastlingRightsLost[2];
-
-    /**
-     * file where a pawn has just moved two squares over
-     */
-    std::stack<int8> eligibleEnPassantFile;
-
-    /**
-     * number of half moves since pawn move or capture (half move is one player taking a turn) (used for 50 move rule)
-     */
-    std::stack<uint8> halfmovesSincePawnMoveOrCapture;
-
-    /**
-     * total half moves since game start (half move is one player taking a turn)
-     */
-    uint16 totalHalfmoves;
-
-    /**
-     * Index of the white and black king (index 0 and 1)
-     */
-    uint8 kingIndex[2];
-
-    /**
-     * Indices of all white and black peices (index 0 and 1)
-     */
-    std::unordered_set<uint8> peiceIndices[2];
-
-    /**
-     * zobrist hash of the current position
-     */
-    uint64 zobrist;
-
-    
-    // PRIVATE METHOD
-    /**
-     * @param move pseudo legal castling move (castling rights are not lost and king is not in check)
-     * @return true if the castling move is legal in the current position
-     */
+    // @param move pseudo legal castling move (castling rights are not lost and king is not in check)
+    // @return true if the castling move is legal in the current position
     bool castlingMoveIsLegal(const Move &move) {
         uint8 color = totalHalfmoves % 2;
         uint8 enemy = !color;
@@ -1476,4 +1418,35 @@ private:
 
         return true;
     }
+
+    // PRIVATE MEMBERS
+    // legal moves for position engine currently is calculating (what has been inputted by user)
+    std::vector<Move> enginePositionMoves;
+
+    // color and peice type at every square (index [0, 63] -> [a1, h8])
+    uint8 peices[64];
+
+    // contains the halfmove number when the kingside castling rights were lost for white or black (index 0 and 1)
+    uint16 kingsideCastlingRightsLost[2];
+
+    // contains the halfmove number when the queenside castling rights were lost for white or black (index 0 and 1)
+    uint16 queensideCastlingRightsLost[2];
+
+    // file where a pawn has just moved two squares over
+    std::stack<int8> eligibleEnPassantFile;
+
+    // number of half moves since pawn move or capture (half move is one player taking a turn) (used for 50 move rule)
+    std::stack<uint8> halfmovesSincePawnMoveOrCapture;
+
+    // total half moves since game start (half move is one player taking a turn)
+    uint16 totalHalfmoves;
+
+    // index of the white and black king (index 0 and 1)
+    uint8 kingIndex[2];
+
+    // indices of all white and black peices (index 0 and 1)
+    std::unordered_set<uint8> peiceIndices[2];
+
+    // zobrist hash of the current position
+    uint64 zobrist;
 };

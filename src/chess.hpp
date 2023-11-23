@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <optional>
+#include <memory>
 
 /**
  * Struct for represening a chess move
@@ -11,20 +12,18 @@ struct StandardMove
     /**
      * Starting square of the move [0, 63] -> [a1, h8]
      */
-    int startSquare;
+    const int startSquare;
 
     /**
      * Ending square of the move [0, 63] -> [a1, h8]
      */
-    int targetSquare;
+    const int targetSquare;
 
     /**
      * In case of promotion, what is the indentity of the promoted peice
      * 0 - none; 1 - knight; 2 - bishop; 3 - rook; 4 - queen
      */
-    int promotion;
-    
-    StandardMove(int start, int target, int promote) : startSquare(start), targetSquare(target), promotion(promote) {}
+    const int promotion;
 
     /**
      * Override equality operator 
@@ -34,15 +33,6 @@ struct StandardMove
         return this->startSquare == other.startSquare
             && this->targetSquare == other.targetSquare
             && this->promotion == other.promotion;
-    }
-
-    /**
-     * Override stream insertion operator to display info about the move
-     */
-    friend std::ostream& operator<<(std::ostream& os, const StandardMove &obj)
-    {
-        os << "(" << ChessHelpers::boardIndexToAlgebraicNotation(obj.startSquare) << " -> " << ChessHelpers::boardIndexToAlgebraicNotation(obj.targetSquare) << ")";
-        return os;
     }
 };
 
@@ -66,7 +56,7 @@ public:
     /**
      * @return std::vector<StandardMove> of legal moves for the current position
      */
-    virtual std::vector<StandardMove> generateLegalMoves() noexcept = 0;
+    virtual std::vector<StandardMove> legalMoves() noexcept = 0;
 
     /**
      * @return -1 if black is to move, or 1 if white is to move
@@ -92,7 +82,7 @@ public:
     /**
      * @return true if the player who is to move is in check
      */
-    virtual bool inCheck() noexcept = 0;
+    virtual bool inCheck() const noexcept = 0;
 
     /**
      * Runs a move generation test on the current position
@@ -114,8 +104,8 @@ namespace ChessHelpers
             throw std::invalid_argument("Algebraic notation should only be two letters long!");
         }
 
-        uint8 file = algebraic[0] - 'a';
-        uint8 rank = algebraic[1] - '1';
+        int file = algebraic[0] - 'a';
+        int rank = algebraic[1] - '1';
 
         if (file < 0 || file > 7 || rank < 0 || rank > 7) {
             throw std::invalid_argument("Algebraic notation should be in the form [a-h][1-8]!");
@@ -128,8 +118,12 @@ namespace ChessHelpers
      * @param boardIndex index [0, 63] -> [a1, h8] of square on board
      * @return std::string notation for position on chess board (ex e3, a1, c8)
      */
-    std::string& boardIndexToAlgebraicNotation(uint8 boardIndex)
+    std::string& boardIndexToAlgebraicNotation(int boardIndex)
     {
+        if (boardIndex < 0 || boardIndex > 63) {
+            throw std::invalid_argument("Algebraic notation should only be two letters long!");
+        }
+        
         char file = 'a' + boardIndex % 8;
         char rank = '1' + boardIndex >> 3;
         

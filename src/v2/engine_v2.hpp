@@ -10,63 +10,69 @@
 class EngineV2 : public StandardEngine
 {
 public:
-    EngineV2(std::string &fenString) : board(fenString) {}
-    EngineV2() {}
+    EngineV2(std::string &fenString) : board(fenString)
+    {
+        enginePositionMoves = board.legalMoves();
+    }
+
+    EngineV2() : board()
+    {
+        enginePositionMoves = board.legalMoves();
+    }
 
     void loadStartingPosition() noexcept override
     {
         board = Board();
+        enginePositionMoves = board.legalMoves();
     }
 
     void loadFEN(std::string &fenString) override
     {
         board = Board(fenString);
+        enginePositionMoves = board.legalMoves();
     }
     
-    std::vector<StandardMove> generateLegalMoves() noexcept override
+    std::vector<StandardMove> legalMoves() noexcept override
     {
-        if (cachedLegalMoves.has_value()) {
-            return std::vector<StandardMove>(cachedLegalMoves.value());
-        }
-        
-        std::vector<Board::Move> pseudoLegalMoves = board.pseudoLegalMoves();
-        std::vector<StandardMove> legalMoves;
+        std::vector<StandardMove> moves;
 
-        for (const Board::Move &move : pseudoLegalMoves) {
-            if (board.isLegal(move)) {
-                legalMoves.emplace_back(move.startSquare, move.targetSquare, move.flags & Board::Move::PROMOTION);
-            }
+        for (Board::Move &move : enginePositionMoves) {
+            moves.emplace_back(move.startSquare, move.targetSquare, move.flags & Board::Move::PROMOTION);
         }
 
-        cachedLegalMoves.emplace(legalMoves);
-        return legalMoves;
+        return moves;
     }
 
     int colorToMove() noexcept override
     {
-        return 1 - 2 * (board.halfMoveClock() % 2);
+        return 1 - 2 * (board.getTotalHalfmoves() % 2);
     }
     
     StandardMove computerMove(std::chrono::milliseconds thinkTime) override
     {
+        if (gameOver().has_value()) {
+            throw std::runtime_error("Game is over, cannot get computer move!");
+        }
         // TODO
     }
 
     void inputMove(StandardMove &move) override
     {
-        std::vector<StandardMove> legalMoves = generateLegalMoves();
+        if (gameOver().has_value()) {
+            throw std::runtime_error("Game is over, cannot input move!");
+        }
 
-        if (gameOver().has_value()) 
-
-        for (StandardMove &legalMove : legalMoves) {
-            if (move == legalMove) {
-                board.makeMove(Board::Move(&board, move.startSquare, move.targetSquare, true, move.promotion));
-                cachedLegalMoves.reset();
+        for (Board::Move &legalMove : enginePositionMoves) {
+            if (legalMove == move) {
+                if (!board.makeMove(legalMove)) {
+                    throw std::runtime_error("This shouldn't happen!");
+                }
+                enginePositionMoves = board.legalMoves();
                 return;
             }
         }
 
-        throw std::runtime_error("inputted move is not legal!");
+        throw std::runtime_error("inputted move is not legal in the current position!");
     }
 
     std::optional<int> gameOver() noexcept override
@@ -75,15 +81,14 @@ public:
             return 0;
         }
 
-        std::vector<StandardMove> legalMoves = generateLegalMoves();
-        if (legalMoves.size() == 0) {
-            return board.inCheck() ? -colorToMove() : 0;
+        if (enginePositionMoves.size() == 0) {
+            return inCheck() ? -colorToMove() : 0;
         }
 
         return std::nullopt;
     }
     
-    bool inCheck() noexcept override
+    bool inCheck() const noexcept override
     {
         return board.inCheck();
     }
@@ -96,11 +101,10 @@ public:
     }
 
 private:
-    std::optional<std::vector<StandardMove>> cachedLegalMoves;
+    // Legal moves for the current position stored in the engine
+    std::vector<Board::Move> enginePositionMoves;
 
-    /**
-     * Member for storing the current position being analysed
-     */
+    // Member for storing the current position being analysed
     Board board;
 
 };
