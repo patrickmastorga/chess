@@ -1,9 +1,12 @@
+#ifndef ENGINE_V2_H
+#define ENGINE_V2_H
+
 #include <chrono>
 #include <string>
 #include <stdexcept>
 #include <optional>
 
-#include "chess.hpp"
+#include "../chess.hpp"
 #include "board.hpp"
 
 
@@ -54,6 +57,7 @@ public:
             throw std::runtime_error("Game is over, cannot get computer move!");
         }
         // TODO
+        return StandardMove(0, 0, 0);
     }
 
     void inputMove(StandardMove &move) override
@@ -64,9 +68,6 @@ public:
 
         for (Board::Move &legalMove : enginePositionMoves) {
             if (legalMove == move) {
-                if (!board.makeMove(legalMove)) {
-                    throw std::runtime_error("This shouldn't happen!");
-                }
                 enginePositionMoves = board.legalMoves();
                 return;
             }
@@ -98,6 +99,7 @@ public:
         // IMPROVMENT IDEAS:
         // - IGNORE EN-PASSANT targets in zobrist hashing (not even needed for three-fold repition - easy fix)
         // TODO
+        return 0;
     }
 
 private:
@@ -160,3 +162,5 @@ elif value == beta:
 else:
     flag = EXACT
 */
+
+#endif

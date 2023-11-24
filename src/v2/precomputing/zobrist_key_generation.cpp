@@ -25,7 +25,7 @@ int main() {
                 cout << endl << "\t";
             }
             randomBits = distribution(generator);
-            std::cout << randomBits;
+            std::cout << randomBits << "ULL";
             if (i < 63) {
                 cout << ", ";
             }
@@ -42,7 +42,7 @@ int main() {
                 cout << endl << "\t";
             }
             randomBits = distribution(generator);
-            std::cout << randomBits;
+            std::cout << randomBits << "ULL";
             if (i < 63) {
                 cout << ", ";
             }
@@ -53,28 +53,28 @@ int main() {
     cout << "TURN KEY" << endl;
 
     randomBits = distribution(generator);
-    std::cout << randomBits << endl;
+    std::cout << randomBits << "ULL" << endl;
 
     cout << "KINGSIDE CASTLING" << endl;
 
     randomBits = distribution(generator);
-    std::cout << "{" << randomBits << ", ";
+    std::cout << "{" << randomBits << "ULL" << ", ";
     randomBits = distribution(generator);
-    std::cout << randomBits << "}" << endl;
+    std::cout << randomBits << "ULL" << "}" << endl;
 
     cout << "QUEENSIDE CASTLING" << endl;
 
     randomBits = distribution(generator);
-    std::cout << "{" << randomBits << ", ";
+    std::cout << "{" << randomBits << "ULL" << ", ";
     randomBits = distribution(generator);
-    std::cout << randomBits << "}" << endl;
+    std::cout << randomBits << "ULL" << "}" << endl;
 
     cout << "EN PASSANT" << endl;
 
     cout << "{";
     for (int i = 0; i < 8; ++i) {
         randomBits = distribution(generator);
-        std::cout << randomBits;
+        std::cout << randomBits << "ULL";
         if (i < 7) {
             cout << ", ";
         }

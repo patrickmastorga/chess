@@ -1,8 +1,55 @@
+#ifndef CHESS_H
+#define CHESS_H
+
+#include <stdexcept>
 #include <chrono>
 #include <string>
 #include <vector>
 #include <optional>
 #include <memory>
+
+namespace ChessHelpers
+{
+    /**
+     * @param algebraic notation for position on chess board (ex e3, a1, c8)
+     * @return uint8 index [0, 63] -> [a1, h8] of square on board
+     */
+    int algebraicNoatationToBoardIndex(const std::string &algebraic)
+    {
+        if (algebraic.size() != 2) {
+            throw std::invalid_argument("Algebraic notation should only be two letters long!");
+        }
+
+        int file = algebraic[0] - 'a';
+        int rank = algebraic[1] - '1';
+
+        if (file < 0 || file > 7 || rank < 0 || rank > 7) {
+            throw std::invalid_argument("Algebraic notation should be in the form [a-h][1-8]!");
+        }
+
+        return (rank - '1') * 8 + (file - 'a');
+    }
+
+    /**
+     * @param boardIndex index [0, 63] -> [a1, h8] of square on board
+     * @return std::string notation for position on chess board (ex e3, a1, c8)
+     */
+    std::string boardIndexToAlgebraicNotation(int boardIndex)
+    {
+        if (boardIndex < 0 || boardIndex > 63) {
+            throw std::invalid_argument("Algebraic notation should only be two letters long!");
+        }
+        
+        char file = 'a' + boardIndex % 8;
+        char rank = '1' + boardIndex >> 3;
+
+        std::string algebraic;
+        algebraic = file;
+        algebraic += rank;
+        
+        return algebraic;
+    }
+}
 
 /**
  * Struct for represening a chess move
@@ -26,6 +73,11 @@ struct StandardMove
     const int promotion;
 
     /**
+     * Constructor for Standard Move
+    */
+    StandardMove(int start, int target, int promotion=0) : startSquare(start), targetSquare(target), promotion(promotion) {}
+
+    /**
      * Override equality operator 
      */
     bool operator==(const StandardMove& other) const
@@ -33,6 +85,15 @@ struct StandardMove
         return this->startSquare == other.startSquare
             && this->targetSquare == other.targetSquare
             && this->promotion == other.promotion;
+    }
+
+    /**
+     * Override stream insertion operator to display info about the move
+     */
+    friend std::ostream& operator<<(std::ostream& os, const StandardMove &obj)
+    {
+        os << "(" << ChessHelpers::boardIndexToAlgebraicNotation(obj.startSquare) << " -> " << ChessHelpers::boardIndexToAlgebraicNotation(obj.targetSquare) << ")";
+        return os;
     }
 };
 
@@ -92,41 +153,4 @@ public:
     virtual int perft(int depth) noexcept = 0;
 };
 
-namespace ChessHelpers
-{
-    /**
-     * @param algebraic notation for position on chess board (ex e3, a1, c8)
-     * @return uint8 index [0, 63] -> [a1, h8] of square on board
-     */
-    int algebraicNoatationToBoardIndex(const std::string &algebraic)
-    {
-        if (algebraic.size() != 2) {
-            throw std::invalid_argument("Algebraic notation should only be two letters long!");
-        }
-
-        int file = algebraic[0] - 'a';
-        int rank = algebraic[1] - '1';
-
-        if (file < 0 || file > 7 || rank < 0 || rank > 7) {
-            throw std::invalid_argument("Algebraic notation should be in the form [a-h][1-8]!");
-        }
-
-        return (rank - '1') * 8 + (file - 'a');
-    }
-
-    /**
-     * @param boardIndex index [0, 63] -> [a1, h8] of square on board
-     * @return std::string notation for position on chess board (ex e3, a1, c8)
-     */
-    std::string& boardIndexToAlgebraicNotation(int boardIndex)
-    {
-        if (boardIndex < 0 || boardIndex > 63) {
-            throw std::invalid_argument("Algebraic notation should only be two letters long!");
-        }
-        
-        char file = 'a' + boardIndex % 8;
-        char rank = '1' + boardIndex >> 3;
-        
-        return {file, rank};
-    }
-}
+#endif
