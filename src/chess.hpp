@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 #include <optional>
-#include <memory>
+#include <cstdint>
 
 namespace ChessHelpers
 {
@@ -41,7 +41,7 @@ namespace ChessHelpers
         }
         
         char file = 'a' + boardIndex % 8;
-        char rank = '1' + boardIndex >> 3;
+        char rank = '1' + boardIndex / 8;
 
         std::string algebraic;
         algebraic = file;
@@ -147,10 +147,10 @@ public:
 
     /**
      * Runs a move generation test on the current position
-     * Prints a per move readout to the console
+     * @param printOut if set true, prints a per move readout to the console
      * @return number of total positions a certain depth away
      */
-    virtual int perft(int depth) noexcept = 0;
+    virtual std::uint64_t perft(int depth, bool printOut=false) noexcept = 0;
 };
 
 #endif

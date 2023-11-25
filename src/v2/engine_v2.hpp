@@ -2,9 +2,11 @@
 #define ENGINE_V2_H
 
 #include <chrono>
+#include <iostream>
 #include <string>
 #include <stdexcept>
 #include <optional>
+#include <cstdint>
 
 #include "../chess.hpp"
 #include "board.hpp"
@@ -68,6 +70,7 @@ public:
 
         for (Board::Move &legalMove : enginePositionMoves) {
             if (legalMove == move) {
+                board.makeMove(legalMove);
                 enginePositionMoves = board.legalMoves();
                 return;
             }
@@ -94,12 +97,37 @@ public:
         return board.inCheck();
     }
 
-    int perft(int depth) noexcept override
+    std::uint64_t perft(int depth, bool printOut=false) noexcept override
     {
-        // IMPROVMENT IDEAS:
-        // - IGNORE EN-PASSANT targets in zobrist hashing (not even needed for three-fold repition - easy fix)
-        // TODO
-        return 0;
+        if (!printOut) {
+            return perft_h(depth);
+        }
+        
+        if (depth == 0) {
+            return 1ULL;
+        }
+
+        std::cout << "PERFT TEST\nFEN: " << board.asFEN() << std::endl;
+
+        std::uint64_t nodes = 0;
+
+        for (Board::Move &move : enginePositionMoves) {
+            std::uint64_t subnodes = 0;
+            
+            std::cout << " *** " << move << ": ";
+            std::cout.flush();
+
+            if (board.makeMove(move)) {
+                subnodes = perft_h(depth - 1);
+                nodes += subnodes;
+                board.unmakeMove(move);
+            }
+
+            std::cout << subnodes << std::endl;
+        }
+
+        std::cout << "TOTAL: " << nodes << std::endl;
+        return nodes;
     }
 
 private:
@@ -109,15 +137,31 @@ private:
     // Member for storing the current position being analysed
     Board board;
 
+    // PRIVATE METHODS
+    // returns number of total positions a certain depth away
+    std::uint64_t perft_h(int depth)
+    {
+        if (depth == 0) {
+            return 1ULL;
+        }
+
+        std::uint64_t nodes = 0;
+        std::vector<Board::Move> moves = board.pseudoLegalMoves();
+
+        for (Board::Move &move : moves) {
+            if (board.makeMove(move)) {
+                nodes += perft_h(depth - 1);
+                board.unmakeMove(move);
+            }
+        }
+        return nodes;
+    }
 };
 
 /*
 
-TODO REGULAR SEARCH
-
-TODO ALPHA BETA SEARCH WITH MOVE ORDERING
-
-TODO ALPHA BETA SEARCH WITH TRANSPOSITION TABLE
+Search ideas:
+ - IGNORE EN-PASSANT targets in zobrist hashing (not even needed for three-fold repition - easy fix)
 
 function alpha_beta_search(node, depth, alpha, beta):
     if depth == 0 or node is a terminal node:

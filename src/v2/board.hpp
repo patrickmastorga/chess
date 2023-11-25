@@ -125,9 +125,9 @@ public:
         }
 
         // Override stream insertion operator to display info about the move
-        std::ostream& operator<<(std::ostream& os) const
+        friend std::ostream& operator<<(std::ostream& os, const Move &obj)
         {
-            os << "(" << ChessHelpers::boardIndexToAlgebraicNotation(startSquare) << " -> " << ChessHelpers::boardIndexToAlgebraicNotation(targetSquare) << ")";
+            os << "(" << ChessHelpers::boardIndexToAlgebraicNotation(obj.startSquare) << " -> " << ChessHelpers::boardIndexToAlgebraicNotation(obj.targetSquare) << ")";
             return os;
         }
 
@@ -170,7 +170,6 @@ public:
                 _int color = c << 3;
 
                 peiceIndices[c].insert(peiceIndex);
-                color <<= 3;
                 switch (peiceInfo) {
                     case 'P':
                     case 'p':
@@ -334,6 +333,7 @@ public:
     {
         // TODO Backwards check/pin generation for endgame
         // TODO Better pinned peice generation (detect if sliding along diagonal of pin)
+        // TODO King not moving onto empty checking square optimization
         
         _int c = totalHalfmoves % 2;
         _int color = c << 3;
@@ -370,7 +370,7 @@ public:
 
         // pins and sliding peice checks
         _int potentialPin = 0;
-        for (_int j = king - 8; j > DIRECTION_BOUNDS[king][B]; j -= 8) {
+        for (_int j = king - 8; j >= DIRECTION_BOUNDS[king][B]; j -= 8) {
             if (!peices[j]) {
                 continue;
             }
@@ -394,7 +394,7 @@ public:
         }
         
         potentialPin = 0;
-        for (_int j = king + 8; j < DIRECTION_BOUNDS[king][F]; j += 8) {
+        for (_int j = king + 8; j <= DIRECTION_BOUNDS[king][F]; j += 8) {
             if (!peices[j]) {
                 continue;
             }
@@ -418,7 +418,7 @@ public:
         }
 
         potentialPin = 0;
-        for (_int j = king - 1; j > DIRECTION_BOUNDS[king][L]; j -= 1) {
+        for (_int j = king - 1; j >= DIRECTION_BOUNDS[king][L]; j -= 1) {
             if (!peices[j]) {
                 continue;
             }
@@ -442,7 +442,7 @@ public:
         }
 
         potentialPin = 0;
-        for (_int j = king + 1; j < DIRECTION_BOUNDS[king][R]; j += 1) {
+        for (_int j = king + 1; j <= DIRECTION_BOUNDS[king][R]; j += 1) {
             if (!peices[j]) {
                 continue;
             }
@@ -466,7 +466,7 @@ public:
         }
 
         potentialPin = 0;
-        for (_int j = king - 9; j > DIRECTION_BOUNDS[king][BL]; j -= 9) {
+        for (_int j = king - 9; j >= DIRECTION_BOUNDS[king][BL]; j -= 9) {
             if (!peices[j]) {
                 continue;
             }
@@ -490,7 +490,7 @@ public:
         }
 
         potentialPin = 0;
-        for (_int j = king + 9; j < DIRECTION_BOUNDS[king][FR]; j += 9) {
+        for (_int j = king + 9; j <= DIRECTION_BOUNDS[king][FR]; j += 9) {
             if (!peices[j]) {
                 continue;
             }
@@ -514,7 +514,7 @@ public:
         }
 
         potentialPin = 0;
-        for (_int j = king - 7; j > DIRECTION_BOUNDS[king][BR]; j -= 7) {
+        for (_int j = king - 7; j >= DIRECTION_BOUNDS[king][BR]; j -= 7) {
             if (!peices[j]) {
                 continue;
             }
@@ -538,7 +538,7 @@ public:
         }
 
         potentialPin = 0;
-        for (_int j = king + 7; j < DIRECTION_BOUNDS[king][FL]; j += 7) {
+        for (_int j = king + 7; j <= DIRECTION_BOUNDS[king][FL]; j += 7) {
             if (!peices[j]) {
                 continue;
             }
@@ -604,7 +604,7 @@ public:
                     moves.emplace_back(this, king, KING_MOVES[king][j], Move::NONE);
                 }
             }
-           
+
             // Backwards search from checking squares to see if peices can move to them
             for (_int t : checkingSquares) {
 
@@ -662,7 +662,7 @@ public:
                 }
 
                 // Sliding peices can block/take
-                for (_int s = t - 8; s > DIRECTION_BOUNDS[king][B]; s -= 8) {
+                for (_int s = t - 8; s >= DIRECTION_BOUNDS[t][B]; s -= 8) {
                     if (peices[s]) {
                         if ((peices[s] == color + ROOK || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
                             moves.emplace_back(this, s, t, Move::LEGAL);
@@ -671,7 +671,7 @@ public:
                     }
                 }
 
-                for (_int s = t + 8; s < DIRECTION_BOUNDS[king][F]; s += 8) {
+                for (_int s = t + 8; s <= DIRECTION_BOUNDS[t][F]; s += 8) {
                     if (peices[s]) {
                         if ((peices[s] == color + ROOK || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
                             moves.emplace_back(this, s, t, Move::LEGAL);
@@ -680,7 +680,7 @@ public:
                     }
                 }
 
-                for (_int s = t - 1; s > DIRECTION_BOUNDS[king][L]; s -= 1) {
+                for (_int s = t - 1; s >= DIRECTION_BOUNDS[t][L]; s -= 1) {
                     if (peices[s]) {
                         if ((peices[s] == color + ROOK || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
                             moves.emplace_back(this, s, t, Move::LEGAL);
@@ -689,7 +689,7 @@ public:
                     }
                 }
 
-                for (_int s = t + 1; s < DIRECTION_BOUNDS[king][R]; s += 1) {
+                for (_int s = t + 1; s <= DIRECTION_BOUNDS[t][R]; s += 1) {
                     if (peices[s]) {
                         if ((peices[s] == color + ROOK || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
                             moves.emplace_back(this, s, t, Move::LEGAL);
@@ -698,7 +698,7 @@ public:
                     }
                 }
 
-                for (_int s = t - 9; s > DIRECTION_BOUNDS[king][BL]; s -= 9) {
+                for (_int s = t - 9; s >= DIRECTION_BOUNDS[t][BL]; s -= 9) {
                     if (peices[s]) {
                         if ((peices[s] == color + BISHOP || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
                             moves.emplace_back(this, s, t, Move::LEGAL);
@@ -707,7 +707,7 @@ public:
                     }
                 }
 
-                for (_int s = t + 9; s < DIRECTION_BOUNDS[king][FR]; s += 9) {
+                for (_int s = t + 9; s <= DIRECTION_BOUNDS[t][FR]; s += 9) {
                     if (peices[s]) {
                         if ((peices[s] == color + BISHOP || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
                             moves.emplace_back(this, s, t, Move::LEGAL);
@@ -716,7 +716,7 @@ public:
                     }
                 }
 
-                for (_int s = t - 7; s > DIRECTION_BOUNDS[king][BR]; s -= 7) {
+                for (_int s = t - 7; s >= DIRECTION_BOUNDS[t][BR]; s -= 7) {
                     if (peices[s]) {
                         if ((peices[s] == color + BISHOP || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
                             moves.emplace_back(this, s, t, Move::LEGAL);
@@ -725,7 +725,7 @@ public:
                     }
                 }
 
-                for (_int s = t + 7; s < DIRECTION_BOUNDS[king][FL]; s += 7) {
+                for (_int s = t + 7; s <= DIRECTION_BOUNDS[t][FL]; s += 7) {
                     if (peices[s]) {
                         if ((peices[s] == color + BISHOP || peices[s] == color + QUEEN) && !pinnedPeices.count(s)) {
                             moves.emplace_back(this, s, t, Move::LEGAL);
@@ -768,7 +768,7 @@ public:
 
         // General case
         for (_int s : peiceIndices[c]) {
-            _int legalFlag = pinnedPeices.count(s) ? Move::LEGAL : Move::NONE;
+            _int legalFlag = pinnedPeices.count(s) ? Move::NONE : Move::LEGAL;
 
             switch (peices[s] % (1 << 3)) {
                 case PAWN: {
@@ -832,7 +832,7 @@ public:
                         goto bishopMoves;
                     }
 
-                    for (_int t = s - 8; t > DIRECTION_BOUNDS[s][B]; t -= 8) {
+                    for (_int t = s - 8; t >= DIRECTION_BOUNDS[s][B]; t -= 8) {
                         if ((!peices[t] || peices[t] >> 3 == e) && (!checks || checkingSquares.count(t))) {
                             moves.emplace_back(this, s, t, legalFlag);
                         }
@@ -841,7 +841,7 @@ public:
                         }
                     }
 
-                    for (_int t = s + 8; t < DIRECTION_BOUNDS[s][F]; t += 8) {
+                    for (_int t = s + 8; t <= DIRECTION_BOUNDS[s][F]; t += 8) {
                         if ((!peices[t] || peices[t] >> 3 == e) && (!checks || checkingSquares.count(t))) {
                             moves.emplace_back(this, s, t, legalFlag);
                         }
@@ -850,7 +850,7 @@ public:
                         }
                     }
 
-                    for (_int t = s - 1; t > DIRECTION_BOUNDS[s][L]; t -= 1) {
+                    for (_int t = s - 1; t >= DIRECTION_BOUNDS[s][L]; t -= 1) {
                         if ((!peices[t] || peices[t] >> 3 == e) && (!checks || checkingSquares.count(t))) {
                             moves.emplace_back(this, s, t, legalFlag);
                         }
@@ -859,7 +859,7 @@ public:
                         }
                     }
 
-                    for (_int t = s + 1; t < DIRECTION_BOUNDS[s][R]; t += 1) {
+                    for (_int t = s + 1; t <= DIRECTION_BOUNDS[s][R]; t += 1) {
                         if ((!peices[t] || peices[t] >> 3 == e) && (!checks || checkingSquares.count(t))) {
                             moves.emplace_back(this, s, t, legalFlag);
                         }
@@ -873,7 +873,7 @@ public:
                     }
                     bishopMoves:
 
-                    for (_int t = s - 9; t > DIRECTION_BOUNDS[s][BL]; t -= 9) {
+                    for (_int t = s - 9; t >= DIRECTION_BOUNDS[s][BL]; t -= 9) {
                         if ((!peices[t] || peices[t] >> 3 == e) && (!checks || checkingSquares.count(t))) {
                             moves.emplace_back(this, s, t, legalFlag);
                         }
@@ -882,7 +882,7 @@ public:
                         }
                     }
 
-                    for (_int t = s + 9; t < DIRECTION_BOUNDS[s][FR]; t += 9) {
+                    for (_int t = s + 9; t <= DIRECTION_BOUNDS[s][FR]; t += 9) {
                         if ((!peices[t] || peices[t] >> 3 == e) && (!checks || checkingSquares.count(t))) {
                             moves.emplace_back(this, s, t, legalFlag);
                         }
@@ -891,7 +891,7 @@ public:
                         }
                     }
 
-                    for (_int t = s - 7; t > DIRECTION_BOUNDS[s][BR]; t -= 7) {
+                    for (_int t = s - 7; t >= DIRECTION_BOUNDS[s][BR]; t -= 7) {
                         if ((!peices[t] || peices[t] >> 3 == e) && (!checks || checkingSquares.count(t))) {
                             moves.emplace_back(this, s, t, legalFlag);
                         }
@@ -900,7 +900,7 @@ public:
                         }
                     }
 
-                    for (_int t = s + 7; t < DIRECTION_BOUNDS[s][FL]; t += 7) {
+                    for (_int t = s + 7; t <= DIRECTION_BOUNDS[s][FL]; t += 7) {
                         if ((!peices[t] || peices[t] >> 3 == e) && (!checks || checkingSquares.count(t))) {
                             moves.emplace_back(this, s, t, legalFlag);
                         }
@@ -1195,6 +1195,80 @@ public:
         return totalHalfmoves;
     }
 
+    // return a string representation of the position in Forsyth–Edwards Notation
+    std::string asFEN()
+    {
+        std::string fen = "";
+        _int c = totalHalfmoves % 2;
+
+        // Peice placement data
+        char pcs[6] = {'P', 'N', 'B', 'R', 'Q', 'K'};
+        _int gap = 0;
+        for (_int i = 56; i >= 0; i -= 8) {
+            for (_int j = 0; j < 8; ++j) {
+                if (!peices[i + j]) {
+                    ++gap;
+                    continue;
+                }
+                // Add gap charecter if needed
+                if (gap) {
+                    fen += '0' + gap;
+                    gap = 0;
+                }
+                // Add peice charecter
+                fen += pcs[(peices[i + j] % (1 << 3)) - 1] + 32 * (peices[i + j] >> 3);
+            }
+            // Add gap charecter if needed
+            if (gap) {
+                fen += '0' + gap;
+                gap = 0;
+            }
+            // Add rank seperator
+            if (i != 0) {
+                fen += '/';
+            }
+        }
+
+        // Player to move
+        fen += (c) ? " b " : " w ";
+
+        // Castling availiability
+        std::string castlingAvailability = "";
+        if (!kingsideCastlingRightsLost[0]) {
+            castlingAvailability += 'K';
+        }
+        if (!queensideCastlingRightsLost[0]) {
+            castlingAvailability += 'Q';
+        }
+        if (!kingsideCastlingRightsLost[1]) {
+            castlingAvailability += 'k';
+        }
+        if (!queensideCastlingRightsLost[1]) {
+            castlingAvailability += 'q';
+        }
+        if (castlingAvailability.size() == 0) {
+            fen += "- ";
+        } else {
+            fen += castlingAvailability + " ";
+        }
+
+        // En passant target
+        if (eligibleEnPassantFile.top() > 0) {
+            fen += ChessHelpers::boardIndexToAlgebraicNotation(40 - 24 * c + eligibleEnPassantFile.top()) + " ";
+        } else {
+            fen += "- ";
+        }
+
+        // Halfmoves since pawn move or capture
+        fen += '0' + halfmovesSincePawnMoveOrCapture.top();
+        fen += ' ';
+
+        // Total moves
+        fen += '1' + totalHalfmoves / 2;
+
+        return fen;
+    }
+
 private:
     // DEFINITIONS
     static constexpr _int WHITE = 0b0000;
@@ -1265,7 +1339,7 @@ private:
         }
 
         // sliding peice checks
-        for (_int j = king - 8; j > DIRECTION_BOUNDS[king][B]; j -= 8) {
+        for (_int j = king - 8; j >= DIRECTION_BOUNDS[king][B]; j -= 8) {
             if (peices[j]) {
                 if (peices[j] == enemy + ROOK || peices[j] == enemy + QUEEN) {
                     return true;
@@ -1274,7 +1348,7 @@ private:
             }
         }
         
-        for (_int j = king + 8; j < DIRECTION_BOUNDS[king][F]; j += 8) {
+        for (_int j = king + 8; j <= DIRECTION_BOUNDS[king][F]; j += 8) {
             if (peices[j]) {
                 if (peices[j] == enemy + ROOK || peices[j] == enemy + QUEEN) {
                     return true;
@@ -1283,7 +1357,7 @@ private:
             }
         }
 
-        for (_int j = king - 1; j > DIRECTION_BOUNDS[king][L]; j -= 1) {
+        for (_int j = king - 1; j >= DIRECTION_BOUNDS[king][L]; j -= 1) {
             if (peices[j]) {
                 if (peices[j] == enemy + ROOK || peices[j] == enemy + QUEEN) {
                     return true;
@@ -1292,7 +1366,7 @@ private:
             }
         }
 
-        for (_int j = king + 1; j < DIRECTION_BOUNDS[king][R]; j += 1) {
+        for (_int j = king + 1; j <= DIRECTION_BOUNDS[king][R]; j += 1) {
             if (peices[j]) {
                 if (peices[j] == enemy + ROOK || peices[j] == enemy + QUEEN) {
                     return true;
@@ -1301,7 +1375,7 @@ private:
             }
         }
 
-        for (_int j = king - 9; j > DIRECTION_BOUNDS[king][BL]; j -= 9) {
+        for (_int j = king - 9; j >= DIRECTION_BOUNDS[king][BL]; j -= 9) {
             if (peices[j]) {
                 if (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN) {
                     return true;
@@ -1310,7 +1384,7 @@ private:
             }
         }
 
-        for (_int j = king + 9; j < DIRECTION_BOUNDS[king][FR]; j += 9) {
+        for (_int j = king + 9; j <= DIRECTION_BOUNDS[king][FR]; j += 9) {
             if (peices[j]) {
                 if (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN) {
                     return true;
@@ -1319,7 +1393,7 @@ private:
             }
         }
 
-        for (_int j = king - 7; j > DIRECTION_BOUNDS[king][BR]; j -= 7) {
+        for (_int j = king - 7; j >= DIRECTION_BOUNDS[king][BR]; j -= 7) {
             if (peices[j]) {
                 if (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN) {
                     return true;
@@ -1328,7 +1402,7 @@ private:
             }
         }
 
-        for (_int j = king + 7; j < DIRECTION_BOUNDS[king][FL]; j += 7) {
+        for (_int j = king + 7; j <= DIRECTION_BOUNDS[king][FL]; j += 7) {
             if (peices[j]) {
                 if (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN) {
                     return true;
@@ -1416,7 +1490,7 @@ private:
 
             // sliding peice attacks
             if (color == BLACK) {
-                for (_int j = s - 8; j > DIRECTION_BOUNDS[s][B]; j -= 8) {
+                for (_int j = s - 8; j >= DIRECTION_BOUNDS[s][B]; j -= 8) {
                     if (peices[j]) {
                         if (peices[j] == enemy + ROOK || peices[j] == enemy + QUEEN) {
                             return false;
@@ -1425,7 +1499,7 @@ private:
                     }
                 }
                 
-                for (_int j = s - 9; j > DIRECTION_BOUNDS[s][BL]; j -= 9) {
+                for (_int j = s - 9; j >= DIRECTION_BOUNDS[s][BL]; j -= 9) {
                     if (peices[j]) {
                         if (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN) {
                             return false;
@@ -1434,7 +1508,7 @@ private:
                     }
                 }
 
-                for (_int j = s - 7; j > DIRECTION_BOUNDS[s][BR]; j -= 7) {
+                for (_int j = s - 7; j >= DIRECTION_BOUNDS[s][BR]; j -= 7) {
                     if (peices[j]) {
                         if (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN) {
                             return false;
@@ -1444,7 +1518,7 @@ private:
                 }
             
             } else {
-                for (_int j = s + 8; j < DIRECTION_BOUNDS[s][F]; j += 8) {
+                for (_int j = s + 8; j <= DIRECTION_BOUNDS[s][F]; j += 8) {
                     if (peices[j]) {
                         if (peices[j] == enemy + ROOK || peices[j] == enemy + QUEEN) {
                             return false;
@@ -1453,7 +1527,7 @@ private:
                     }
                 }
 
-                for (_int j = s + 9; j < DIRECTION_BOUNDS[s][FR]; j += 9) {
+                for (_int j = s + 9; j <= DIRECTION_BOUNDS[s][FR]; j += 9) {
                     if (peices[j]) {
                         if (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN) {
                             return false;
@@ -1462,7 +1536,7 @@ private:
                     }
                 }
 
-                for (_int j = s + 7; j < DIRECTION_BOUNDS[s][FL]; j += 7) {
+                for (_int j = s + 7; j <= DIRECTION_BOUNDS[s][FL]; j += 7) {
                     if (peices[j]) {
                         if (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN) {
                             return false;
