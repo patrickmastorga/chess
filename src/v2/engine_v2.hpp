@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <iomanip>
 #include <string>
 #include <stdexcept>
 #include <optional>
@@ -42,7 +43,7 @@ public:
         std::vector<StandardMove> moves;
 
         for (Board::Move &move : enginePositionMoves) {
-            moves.emplace_back(move.startSquare, move.targetSquare, move.flags & Board::Move::PROMOTION);
+            moves.emplace_back(move.start(), move.target(), move.promotion());
         }
 
         return moves;
@@ -111,16 +112,16 @@ public:
 
         std::uint64_t nodes = 0;
 
-        for (Board::Move &move : enginePositionMoves) {
+        for (size_t i = 0; i < enginePositionMoves.size(); ++i) {
             std::uint64_t subnodes = 0;
             
-            std::cout << " *** " << move << ": ";
+            std::cout << std::setw(2) << i << " *** " << enginePositionMoves[i] << ": ";
             std::cout.flush();
 
-            if (board.makeMove(move)) {
+            if (board.makeMove(enginePositionMoves[i])) {
                 subnodes = perft_h(depth - 1);
                 nodes += subnodes;
-                board.unmakeMove(move);
+                board.unmakeMove(enginePositionMoves[i]);
             }
 
             std::cout << subnodes << std::endl;

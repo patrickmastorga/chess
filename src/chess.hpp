@@ -14,7 +14,7 @@ namespace ChessHelpers
      * @param algebraic notation for position on chess board (ex e3, a1, c8)
      * @return uint8 index [0, 63] -> [a1, h8] of square on board
      */
-    int algebraicNoatationToBoardIndex(const std::string &algebraic)
+    int algebraicNotationToBoardIndex(const std::string &algebraic)
     {
         if (algebraic.size() != 2) {
             throw std::invalid_argument("Algebraic notation should only be two letters long!");
@@ -27,7 +27,7 @@ namespace ChessHelpers
             throw std::invalid_argument("Algebraic notation should be in the form [a-h][1-8]!");
         }
 
-        return (rank - '1') * 8 + (file - 'a');
+        return rank * 8 + file;
     }
 
     /**
