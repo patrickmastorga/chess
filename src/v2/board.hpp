@@ -122,8 +122,6 @@ public:
             os << ChessHelpers::boardIndexToAlgebraicNotation(obj.start()) << ChessHelpers::boardIndexToAlgebraicNotation(obj.target());
             if (obj.promotion()) {
                 char values[4] = {'n', 'b', 'r', 'q'};
-                _int poop1 = obj.promotion() - 2;
-                char poop2 = values[obj.promotion() - 2];
                 os << values[obj.promotion() - 2];
             }
             return os;
