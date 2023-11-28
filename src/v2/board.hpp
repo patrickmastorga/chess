@@ -333,7 +333,7 @@ public:
 
         if (enPassantTarget != "-") {
             try {
-                eligibleEnPassantFile.push(ChessHelpers::algebraicNotationToBoardIndex(enPassantTarget) % 8);
+                eligibleEnPassantFile.push(ChessHelpers::algebraicNotationToBoardIndex(enPassantTarget));
             } catch (const std::invalid_argument &e) {
                 throw std::invalid_argument(std::string("Invalid FEN en passant target! ") + e.what());
             }
@@ -629,21 +629,22 @@ public:
         }
 
         // En passant moves
-        _int epfile = eligibleEnPassantFile.top();
-        if (epfile >= 0) {
+        _int epSquare = eligibleEnPassantFile.top();
+        if (epSquare >= 0) {
+            _int epfile = epSquare % 8;
             if (color == WHITE) {
-                if (epfile != 0 && peices[32 + epfile - 1] == color + PAWN && (!checks || checkingSquares.count(40 + epfile))) {
-                    moves.emplace_back(this, 32 + epfile - 1, 40 + epfile, Move::EN_PASSANT);
+                if (epfile != 0 && peices[epSquare - 9] == color + PAWN && (!checks || checkingSquares.count(epSquare - 8))) {
+                    moves.emplace_back(this, epSquare - 9, epSquare, Move::EN_PASSANT);
                 }
-                if (epfile != 7 && peices[32 + epfile + 1] == color + PAWN && (!checks || checkingSquares.count(40 + epfile))) {
-                    moves.emplace_back(this, 32 + epfile + 1, 40 + epfile, Move::EN_PASSANT);
+                if (epfile != 7 && peices[epSquare - 7] == color + PAWN && (!checks || checkingSquares.count(epSquare - 8))) {
+                    moves.emplace_back(this, epSquare - 7, epSquare, Move::EN_PASSANT);
                 }
             } else {
-                if (epfile != 0 && peices[24 + epfile - 1] == color + PAWN && (!checks || checkingSquares.count(16 + epfile))) {
-                    moves.emplace_back(this, 24 + epfile - 1, 16 + epfile, Move::EN_PASSANT);
+                if (epfile != 0 && peices[epSquare + 7] == color + PAWN && (!checks || checkingSquares.count(epSquare + 8))) {
+                    moves.emplace_back(this, epSquare + 7, epSquare, Move::EN_PASSANT);
                 }
-                if (epfile != 7 && peices[24 + epfile + 1] == color + PAWN && (!checks || checkingSquares.count(16 + epfile))) {
-                    moves.emplace_back(this, 24 + epfile + 1, 16 + epfile, Move::EN_PASSANT);
+                if (epfile != 7 && peices[epSquare + 9] == color + PAWN && (!checks || checkingSquares.count(epSquare + 8))) {
+                    moves.emplace_back(this, epSquare + 9, epSquare, Move::EN_PASSANT);
                 }
             }
         }
@@ -794,7 +795,7 @@ public:
         if (!kingsideCastlingRightsLost[c] && !checks) {
             _int castlingRank = 56 * c;
             bool roomToCastle = true;
-            for (_int j = castlingRank + 3; j > castlingRank; --j) {
+            for (_int j = castlingRank + 5; j < castlingRank + 7; ++j) {
                 if (peices[j]) {
                     roomToCastle = false;
                     break;
@@ -807,7 +808,7 @@ public:
         if (!queensideCastlingRightsLost[c] && !checks) {
             _int castlingRank = 56 * c;
             bool roomToCastle = true;
-            for (_int j = castlingRank + 5; j < castlingRank + 7; ++j) {
+            for (_int j = castlingRank + 3; j > castlingRank; --j) {
                 if (peices[j]) {
                     roomToCastle = false;
                     break;
@@ -1093,7 +1094,7 @@ public:
 
         // En passant file
         if (move.moving() % (1 << 3) == PAWN && std::abs(move.target() - move.start()) == 16) {
-            eligibleEnPassantFile.push(move.start() % 8);
+            eligibleEnPassantFile.push((move.start() + move.target()) / 2);
         } else {
             eligibleEnPassantFile.push(-1);
         }       
@@ -1271,7 +1272,7 @@ public:
 
         // En passant target
         if (eligibleEnPassantFile.top() >= 0) {
-            fen += ChessHelpers::boardIndexToAlgebraicNotation(40 - 24 * c + eligibleEnPassantFile.top()) + " ";
+            fen += ChessHelpers::boardIndexToAlgebraicNotation(eligibleEnPassantFile.top()) + " ";
         } else {
             fen += "- ";
         }

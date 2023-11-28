@@ -2,6 +2,7 @@
 #define CHESS_H
 
 #include <stdexcept>
+#include <iostream>
 #include <chrono>
 #include <string>
 #include <vector>
@@ -92,7 +93,11 @@ struct StandardMove
      */
     friend std::ostream& operator<<(std::ostream& os, const StandardMove &obj)
     {
-        os << "(" << ChessHelpers::boardIndexToAlgebraicNotation(obj.startSquare) << " -> " << ChessHelpers::boardIndexToAlgebraicNotation(obj.targetSquare) << ")";
+        os << ChessHelpers::boardIndexToAlgebraicNotation(obj.startSquare) << ChessHelpers::boardIndexToAlgebraicNotation(obj.targetSquare);
+        if (obj.promotion) {
+            char values[4] = {'n', 'b', 'r', 'q'};
+            os << values[obj.promotion - 1];
+        }
         return os;
     }
 };
