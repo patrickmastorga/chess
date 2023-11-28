@@ -1,3 +1,6 @@
+#ifndef PERFT_H
+#define PERFT_H
+
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -86,3 +89,5 @@ namespace Perft
         std::cout << "TOTAL TIME: " << durationTotal.count() << " millis" << std::endl;
     }
 }
+
+#endif

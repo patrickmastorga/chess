@@ -300,25 +300,31 @@ public:
         }
 
         // Update castling availibility according to fen rules
-        kingsideCastlingRightsLost[0] = 1;
-        kingsideCastlingRightsLost[1] = 1;
-        queensideCastlingRightsLost[0] = 1;
-        queensideCastlingRightsLost[1] = 1;
+        kingsideCastlingRightsLost[0] = -1;
+        kingsideCastlingRightsLost[1] = -1;
+        queensideCastlingRightsLost[0] = -1;
+        queensideCastlingRightsLost[1] = -1;
 
         if (castlingAvailabilty != "-") {
             for (char castlingInfo : castlingAvailabilty) {
                 //_int color = std::islower(c);
                 _int c = castlingInfo > 96 && castlingInfo < 123;
+                _int color = c << 3;
+                _int castlingRank = 56 * c;
                 switch (castlingInfo) {
                     case 'K':
                     case 'k':
-                        kingsideCastlingRightsLost[c] = 0;
-                        zobrist ^= ZOBRIST_KINGSIDE_CASTLING_KEYS[c];
+                        if (peices[castlingRank + 4] == color + KING && peices[castlingRank + 7] == color + ROOK) {
+                            kingsideCastlingRightsLost[c] = 0;
+                            zobrist ^= ZOBRIST_KINGSIDE_CASTLING_KEYS[c];
+                        }
                         break;
                     case 'Q':
                     case 'q':
-                        queensideCastlingRightsLost[c] = 0;
-                        zobrist ^= ZOBRIST_QUEENSIDE_CASTLING_KEYS[c];
+                        if (peices[castlingRank + 4] == color + KING && peices[castlingRank] == color + ROOK) {
+                            queensideCastlingRightsLost[c] = 0;
+                            zobrist ^= ZOBRIST_QUEENSIDE_CASTLING_KEYS[c];
+                        }
                         break;
                     default:
                         throw std::invalid_argument("Unrecognised char in FEN castling availability data!");
@@ -1101,15 +1107,27 @@ public:
 
         // update castling rights
         if (!kingsideCastlingRightsLost[c]) {
-            if (move.moving() == color + KING || (move.moving() == color + ROOK && (move.start() == 7 || move.start() == 63))) {
+            if (move.moving() == color + KING || (move.moving() == color + ROOK && (color == WHITE ? move.start() == 7 : move.start() == 63))) {
                 kingsideCastlingRightsLost[c] = totalHalfmoves;
                 zobrist ^= ZOBRIST_KINGSIDE_CASTLING_KEYS[c];
             }
         }
         if (!queensideCastlingRightsLost[c]) {
-            if (move.moving() == color + KING || (move.moving() == color + ROOK && (move.start() == 0 || move.start() == 56))) {
+            if (move.moving() == color + KING || (move.moving() == color + ROOK && (color == WHITE ? move.start() == 0 : move.start() == 56))) {
                 queensideCastlingRightsLost[c] = totalHalfmoves;
                 zobrist ^= ZOBRIST_QUEENSIDE_CASTLING_KEYS[c];
+            }
+        }
+        if (!kingsideCastlingRightsLost[e]) {
+            if (color == BLACK ? move.target() == 7 : move.target() == 63) {
+                kingsideCastlingRightsLost[e] = totalHalfmoves;
+                zobrist ^= ZOBRIST_KINGSIDE_CASTLING_KEYS[e];
+            }
+        }
+        if (!queensideCastlingRightsLost[e]) {
+            if (color == BLACK ? move.target() == 0 : move.target() == 56) {
+                queensideCastlingRightsLost[e] = totalHalfmoves;
+                zobrist ^= ZOBRIST_QUEENSIDE_CASTLING_KEYS[e];
             }
         }
 
@@ -1175,9 +1193,22 @@ public:
         // undo castling rights
         if (kingsideCastlingRightsLost[c] == totalHalfmoves) {
             kingsideCastlingRightsLost[c] = 0;
+            zobrist ^= ZOBRIST_KINGSIDE_CASTLING_KEYS[c];
+
         }
         if (queensideCastlingRightsLost[c] == totalHalfmoves) {
             queensideCastlingRightsLost[c] = 0;
+            zobrist ^= ZOBRIST_QUEENSIDE_CASTLING_KEYS[c];
+
+        }
+        if (kingsideCastlingRightsLost[e] == totalHalfmoves) {
+            kingsideCastlingRightsLost[e] = 0;
+            zobrist ^= ZOBRIST_KINGSIDE_CASTLING_KEYS[e];
+        }
+        if (queensideCastlingRightsLost[e] == totalHalfmoves) {
+            queensideCastlingRightsLost[e] = 0;
+            zobrist ^= ZOBRIST_QUEENSIDE_CASTLING_KEYS[e];
+
         }
 
         // decrement counters
