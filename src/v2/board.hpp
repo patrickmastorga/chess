@@ -350,7 +350,8 @@ public:
 
         // Get half move clock data from fen string
         if (!std::getline(fenStringStream, halfmoveClock, ' ')) {
-            throw std::invalid_argument("Cannot get halfmove clock from FEN!");
+            halfmoveClock = "0";
+            //throw std::invalid_argument("Cannot get halfmove clock from FEN!");
         }
 
         try {
@@ -361,7 +362,8 @@ public:
 
         // Get full move number data from fen string
         if (!std::getline(fenStringStream, fullmoveNumber, ' ')) {
-            throw std::invalid_argument("Cannot getfullmove number from FEN!");
+            fullmoveNumber = "1";
+            //throw std::invalid_argument("Cannot getfullmove number from FEN!");
         }
 
         try {

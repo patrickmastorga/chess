@@ -2,6 +2,7 @@
 #define PERFT_H
 
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <string>
 #include <chrono>
@@ -20,12 +21,12 @@
 namespace Perft
 {
     /**
-     * Runs a full perft test on a given engine and prints the results out to the console
+     * Runs a full perft test tailored for testing accuracy on a given engine and prints the results out to the console
     */
-    void test(StandardEngine &engine)
+    void testAccuracy(StandardEngine &engine)
     {
         // Open the JSON file
-        std::ifstream file("../perft/perft_suite.json");
+        std::ifstream file("../perft/accuracy_test_suite.json");
 
         // Check if the file is open
         if (!file.is_open()) {
@@ -87,6 +88,43 @@ namespace Perft
         auto endTotal = std::chrono::high_resolution_clock::now();
         auto durationTotal = std::chrono::duration_cast<std::chrono::milliseconds>(endTotal - startTotal);
         std::cout << "TOTAL TIME: " << durationTotal.count() << " millis" << std::endl;
+    }
+
+    void testSpeed(StandardEngine &engine, int depth=4)
+    {
+        // Open the file
+        std::ifstream file("../perft/preformace_test_suite.txt");
+
+        std::cout << "PREFORMANCE TEST:" <<std::endl;
+        auto startTotal = std::chrono::high_resolution_clock::now();
+
+        std::string fen;
+        while(std::getline(file, fen)) {
+            // Display test data
+            engine.loadFEN(fen);
+            std::cout << "position fen " << fen << " depth " << depth;
+            std::cout.flush();
+
+            // Run test
+            auto startPerft = std::chrono::high_resolution_clock::now();
+            int out = engine.perft(depth);
+            auto endPerft = std::chrono::high_resolution_clock::now();
+            auto durationPerft = std::chrono::duration_cast<std::chrono::milliseconds>(endPerft - startPerft);
+
+            // Display test result
+            /*
+            if (out == nodes) {
+                std::cout << "result: " << GREEN_TEXT << out << RESET_TEXT << " SUCCESS" << std::endl;
+            } else {
+                std::cout << "result: " << RED_TEXT << out << RESET_TEXT << " FAIL" << std::endl;
+            }
+            */
+            std::cout << " time " << durationPerft.count() << " millis" << std::endl;
+        }
+
+        auto endTotal = std::chrono::high_resolution_clock::now();
+        auto durationTotal = std::chrono::duration_cast<std::chrono::milliseconds>(endTotal - startTotal);
+        std::cout << std::endl << "TOTAL TIME: " << durationTotal.count() << " millis" << std::endl;
     }
 }
 
