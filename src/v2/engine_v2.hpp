@@ -12,6 +12,12 @@
 #include "../chess.hpp"
 #include "board.hpp"
 
+#define MAX_DEPTH = 32
+#define MOVE_STACK_SIZE = 1500
+
+typedef std::int_fast16_t _int;
+typedef std::uint_fast64_t uint64;
+
 
 class EngineV2 : public StandardEngine
 {
@@ -100,8 +106,10 @@ public:
 
     std::uint64_t perft(int depth, bool printOut=false) noexcept override
     {
+        Board::Move moveStack[1500];
+        
         if (!printOut) {
-            return perft_h(depth);
+            return perft_h(depth, moveStack, 0);
         }
         
         if (depth == 0) {
@@ -119,7 +127,7 @@ public:
             std::cout.flush();
 
             if (board.makeMove(enginePositionMoves[i])) {
-                subnodes = perft_h(depth - 1);
+                subnodes = perft_h(depth - 1, moveStack, 0);
                 nodes += subnodes;
                 board.unmakeMove(enginePositionMoves[i]);
             }
@@ -140,21 +148,24 @@ private:
 
     // PRIVATE METHODS
     // returns number of total positions a certain depth away
-    std::uint64_t perft_h(int depth)
+    std::uint64_t perft_h(_int depth, Board::Move *moveStack, _int startMoves)
     {
         if (depth == 0) {
             return 1ULL;
         }
 
-        std::uint64_t nodes = 0;
-        std::vector<Board::Move> moves = board.pseudoLegalMoves();
+        _int endMoves = startMoves;
+        board.generatePseudoLegalMoves(moveStack, endMoves);
 
-        for (Board::Move &move : moves) {
-            if (board.makeMove(move)) {
-                nodes += perft_h(depth - 1);
-                board.unmakeMove(move);
+        std::uint64_t nodes = 0;
+
+        for (_int i = startMoves; i < endMoves; ++i) {
+            if (board.makeMove(moveStack[i])) {
+                nodes += perft_h(depth - 1, moveStack, endMoves);
+                board.unmakeMove(moveStack[i]);
             }
         }
+
         return nodes;
     }
 };
