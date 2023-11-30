@@ -2,10 +2,9 @@
 #define BOARD_H
 
 #include <cstdint>
-#include <iostream>
 #include <vector>
-#include <memory>
 #include <stack>
+#include <forward_list>
 #include <unordered_set>
 #include <algorithm>
 #include <stdexcept>
@@ -16,8 +15,14 @@
 #include "precomputed.hpp"
 #include "../chess.hpp"
 
+#define MAX_GAME_LENGTH 500
+
+// TODO add some sort of protection for games with halfmove counter > 500
+
 typedef std::int_fast16_t _int;
+typedef std::uint_fast32_t uint32;
 typedef std::uint_fast64_t uint64;
+
 
 // class representing the current state of the chess game
 class Board
@@ -178,6 +183,8 @@ public:
         for (int i = 0; i < 15; ++i) {
             numPeices[i] = 0;
         }
+        numTotalPeices[0] = 0;
+        numTotalPeices[1] = 0;
        
         zobrist = 0;
         
@@ -310,17 +317,6 @@ public:
             throw std::invalid_argument("Cannot get en passant target from FEN!");
         }
 
-        if (enPassantTarget != "-") {
-            try {
-                eligibleEnPassantFile.push(ChessHelpers::algebraicNotationToBoardIndex(enPassantTarget));
-            } catch (const std::invalid_argument &e) {
-                throw std::invalid_argument(std::string("Invalid FEN en passant target! ") + e.what());
-            }
-        
-        } else {
-            eligibleEnPassantFile.push(-1);
-        }
-
         // Get half move clock data from fen string
         if (!std::getline(fenStringStream, halfmoveClock, ' ')) {
             halfmoveClock = "0";
@@ -328,7 +324,8 @@ public:
         }
 
         try {
-            halfmovesSincePawnMoveOrCapture.push(static_cast<_int>(std::stoi(halfmoveClock)));
+            hmspmocIndex = 0;
+            halfmovesSincePawnMoveOrCapture[hmspmocIndex++] = static_cast<_int>(std::stoi(halfmoveClock));
         } catch (const std::invalid_argument &e) {
             throw std::invalid_argument(std::string("Invalid FEN half move clock! ") + e.what());
         }
@@ -345,6 +342,20 @@ public:
             throw std::invalid_argument(std::string("Invalid FEN full move number! ") + e.what());
         }
 
+        // wait until total halfmoves are defined before defining
+        for (int i = 0; i < MAX_GAME_LENGTH; ++i) {
+            eligibleEnPassantSquare[i] = -1;
+        }
+        if (enPassantTarget != "-") {
+            try {
+                eligibleEnPassantSquare[totalHalfmoves] = ChessHelpers::algebraicNotationToBoardIndex(enPassantTarget);
+            } catch (const std::invalid_argument &e) {
+                throw std::invalid_argument(std::string("Invalid FEN en passant target! ") + e.what());
+            }
+        
+        } else {
+            eligibleEnPassantSquare[totalHalfmoves] = -1;
+        }
 
         // initialize zobrist hash for all of the peices
         for (_int i = 0; i < 64; ++i) {
@@ -360,6 +371,98 @@ public:
 
 
     // PUBLIC METHODS
+    // color and peice type at every square (index [0, 63] -> [a1, h8])
+    inline _int peiceAt(_int index) const
+    {
+        return peices[index];
+    }
+
+    // returns true if the speicified color has not forfieted thier kingside castling rights
+    inline bool canKingsideCastle(_int c) const noexcept
+    {
+        return !kingsideCastlingRightsLost[c];
+    }
+
+    // returns true if the speicified color has not forfieted thier queenside castling rights
+    inline bool canQueensideCastle(_int c) const noexcept
+    {
+        return !queensideCastlingRightsLost[c];
+    }
+
+    // returns the square where a pawn has just passed over, -1 otherwise
+    inline _int enPassantSquare() const noexcept
+    {
+        return eligibleEnPassantSquare[totalHalfmoves];
+    }
+
+    // returns total half moves since game start (half move is one player taking a turn)
+    inline _int getTotalHalfmoves() const
+    {
+        return totalHalfmoves;
+    }
+
+    // returns true if the last move played has led to a repitition
+    bool repititionOcurred() const noexcept
+    {
+        if (halfmovesSincePawnMoveOrCapture[hmspmocIndex - 1] < 4) {
+            return false;
+        }
+
+        _int index = totalHalfmoves - 4;
+        _int numPossibleRepitions = halfmovesSincePawnMoveOrCapture[hmspmocIndex - 1] / 2 - 1;
+        uint32 currentHash = static_cast<uint32>(zobrist);
+        
+        for (_int i = 0; i < numPossibleRepitions; ++i) {
+            if (positionHistory[index] == currentHash) {
+                return true;
+            }
+            index -= 2;
+        }
+        return false;
+    }
+
+    // returns true if the last move played has led to a draw by threefold repitition
+    bool isDrawByThreefoldRepitition() const noexcept
+    {
+        if (halfmovesSincePawnMoveOrCapture[hmspmocIndex - 1] < 8) {
+            return false;
+        }
+
+        _int index = totalHalfmoves - 4;
+        _int numPossibleRepitions = halfmovesSincePawnMoveOrCapture[hmspmocIndex - 1] / 2 - 1;
+        uint32 currentHash = static_cast<uint32>(zobrist);
+        bool repititionFound;
+        
+        for (_int i = 0; i < numPossibleRepitions; ++i) {
+            if (positionHistory[index] == currentHash) {
+                if (repititionFound) {
+                    return true;
+                }
+                repititionFound = true;
+            }
+            index -= 2;
+        }
+        return false;
+    }
+    
+    // returns true if the last move played has led to a draw by the fifty move rule
+    inline bool isDrawByFiftyMoveRule() const noexcept
+    {
+        return halfmovesSincePawnMoveOrCapture[hmspmocIndex - 1] >= 50;
+    }
+    
+    // returns true if there isnt enough material on the board to deliver checkmate
+    bool isDrawByInsufficientMaterial() const noexcept
+    {
+        if (numTotalPeices[0] > 3 || numTotalPeices[1] > 3) {
+            return false;
+        }
+        if (numTotalPeices[0] == 3 || numTotalPeices[1] == 3) {
+            return (numPeices[WHITE + KNIGHT] == 2 || numPeices[BLACK + KNIGHT] == 2) && (numTotalPeices[0] == 1 || numTotalPeices[1] == 1);
+        }
+        return !(numPeices[WHITE + PAWN] || numPeices[BLACK + PAWN] || numPeices[WHITE + ROOK] || numPeices[BLACK + ROOK] || numPeices[WHITE + QUEEN] || numPeices[BLACK + QUEEN]);
+    }
+
     // Generates pseudo-legal moves for the current position
     // Populates the stack starting from the given index
     // Doesnt generate all pseudo legal moves, omits moves that are guarenteed to be illegal
@@ -617,7 +720,7 @@ public:
         }
 
         // En passant moves
-        _int epSquare = eligibleEnPassantFile.top();
+        _int epSquare = eligibleEnPassantSquare[totalHalfmoves];
         if (epSquare >= 0) {
             _int epfile = epSquare % 8;
             if (color == WHITE) {
@@ -1063,6 +1166,7 @@ public:
             _int captureSquare = move.isEnPassant() ? move.target() - 8 + 16 * c : move.target();
             zobrist ^= ZOBRIST_PEICE_KEYS[e][move.captured() % (1 << 3) - 1][captureSquare];
             --numPeices[move.captured()];
+            --numTotalPeices[e];
         }
 
         // Update rooks for castling
@@ -1088,21 +1192,19 @@ public:
         }
 
         // UPDATE BOARD FLAGS
-        // increment counters
+        // increment counters / Update position history
         ++totalHalfmoves;
         if (move.captured() || move.moving() == color + PAWN) {
-            halfmovesSincePawnMoveOrCapture.push(0);
+            halfmovesSincePawnMoveOrCapture[hmspmocIndex++] = 0;
         } else {
-            _int prev = halfmovesSincePawnMoveOrCapture.top();
-            halfmovesSincePawnMoveOrCapture.pop();
-            halfmovesSincePawnMoveOrCapture.push(prev + 1);
+            ++halfmovesSincePawnMoveOrCapture[hmspmocIndex - 1];
         }
 
         // En passant file
         if (move.moving() % (1 << 3) == PAWN && std::abs(move.target() - move.start()) == 16) {
-            eligibleEnPassantFile.push((move.start() + move.target()) / 2);
+            eligibleEnPassantSquare[totalHalfmoves] = (move.start() + move.target()) / 2;
         } else {
-            eligibleEnPassantFile.push(-1);
+            eligibleEnPassantSquare[totalHalfmoves] = -1;
         }       
 
         // update castling rights
@@ -1131,6 +1233,7 @@ public:
             }
         }
 
+        positionHistory[totalHalfmoves - 1] = static_cast<uint32>(zobrist);
         return true;
     }
 
@@ -1167,6 +1270,7 @@ public:
             _int captureSquare = move.isEnPassant() ? move.target() - 8 + 16 * c : move.target();
             zobrist ^= ZOBRIST_PEICE_KEYS[e][move.captured() % (1 << 3) - 1][captureSquare];
             ++numPeices[move.captured()];
+            ++numTotalPeices[e];
         }
 
         // Undo rooks for castling
@@ -1219,15 +1323,10 @@ public:
         // decrement counters
         --totalHalfmoves;
         if (move.captured() || move.moving() == color + PAWN) {
-            halfmovesSincePawnMoveOrCapture.pop();
+            --hmspmocIndex;
         } else {
-            _int prev = halfmovesSincePawnMoveOrCapture.top();
-            halfmovesSincePawnMoveOrCapture.pop();
-            halfmovesSincePawnMoveOrCapture.push(prev - 1);
+            --halfmovesSincePawnMoveOrCapture[hmspmocIndex - 1];
         }
-
-        // Undo en passant file
-        eligibleEnPassantFile.pop();      
     }
   
     // return true if the player about to move is in check
@@ -1236,17 +1335,10 @@ public:
         return inCheck(totalHalfmoves % 2);
     }
     
-    // @return true if the last move has put the game into a forced draw (threefold repitition / 50 move rule)
+    // returns true if the last move has put the game into a forced draw (threefold repitition / 50 move rule / insufficient material)
     bool isDraw() const
     {
-        // TODO
-        return false;
-    }
-
-    // returns total half moves since game start (half move is one player taking a turn)
-    int getTotalHalfmoves() const
-    {
-        return totalHalfmoves;
+        return isDrawByFiftyMoveRule() || isDrawByInsufficientMaterial() || isDrawByThreefoldRepitition();
     }
 
     // return a string representation of the position in Forsyth–Edwards Notation
@@ -1307,14 +1399,14 @@ public:
         }
 
         // En passant target
-        if (eligibleEnPassantFile.top() >= 0) {
-            fen += ChessHelpers::boardIndexToAlgebraicNotation(eligibleEnPassantFile.top()) + " ";
+        if (eligibleEnPassantSquare[totalHalfmoves] >= 0) {
+            fen += ChessHelpers::boardIndexToAlgebraicNotation(eligibleEnPassantSquare[totalHalfmoves]) + " ";
         } else {
             fen += "- ";
         }
 
         // Halfmoves since pawn move or capture
-        fen += '0' + halfmovesSincePawnMoveOrCapture.top();
+        fen += std::to_string(halfmovesSincePawnMoveOrCapture[hmspmocIndex - 1]);
         fen += ' ';
 
         // Total moves
@@ -1323,7 +1415,7 @@ public:
         return fen;
     }
 
-private:
+
     // DEFINITIONS
     static constexpr _int WHITE = 0b0000;
     static constexpr _int BLACK = 0b1000;
@@ -1333,8 +1425,7 @@ private:
     static constexpr _int ROOK =   0b100;
     static constexpr _int QUEEN =  0b101;
     static constexpr _int KING =   0b110;
-
-    
+private:    
     // PRIVATE MEMBERS
     // color and peice type at every square (index [0, 63] -> [a1, h8])
     _int peices[64];
@@ -1346,10 +1437,11 @@ private:
     _int queensideCastlingRightsLost[2];
 
     // file where a pawn has just moved two squares over
-    std::stack<_int> eligibleEnPassantFile;
+    _int eligibleEnPassantSquare[500];
 
     // number of half moves since pawn move or capture (half move is one player taking a turn) (used for 50 move rule)
-    std::stack<_int> halfmovesSincePawnMoveOrCapture;
+    _int halfmovesSincePawnMoveOrCapture[250];
+    _int hmspmocIndex;
 
     // total half moves since game start (half move is one player taking a turn)
     _int totalHalfmoves;
@@ -1357,11 +1449,18 @@ private:
     // index of the white and black king (index 0 and 1)
     _int kingIndex[2];
 
+    //std::forward_list<uint32> positionHistory;
+    // array of 32 bit hashes of the positions used for checking for repititions
+    uint32 positionHistory[500];
+
     // zobrist hash of the current position
     uint64 zobrist;
 
     // number of peices on the board for either color and for every peice
     _int numPeices[15];
+
+    // number of total on the board for either color 
+    _int numTotalPeices[2];
 
 
     // PRIVATE METHODS  
