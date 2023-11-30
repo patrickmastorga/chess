@@ -11,6 +11,7 @@
 
 #include "../chess.hpp"
 #include "board.hpp"
+#include "precomputed.hpp"
 
 #define MAX_DEPTH = 32
 #define MOVE_STACK_SIZE = 1500
@@ -167,6 +168,18 @@ private:
         }
 
         return nodes;
+    }
+
+    _int search_std(_int depth, Board::Move *moveStack, _int startMoves)
+    {
+        // TODO
+        return 0;
+    }
+
+    _int evaluate()
+    {
+        // TODO
+        return 0;
     }
 };
 

@@ -1,3 +1,6 @@
+#ifndef PRECOMPUTED_H
+#define PRECOMPUTED_H
+
 #include <cstdint>
 
 typedef std::int_fast8_t int8;
@@ -8,13 +11,16 @@ typedef std::uint_fast64_t uint64;
  * Value of every peice [color][peice] at every index [0, 63] -> [a1, h8]
  * Used for evaluating a position
  */
-//const int16 STANDARD_PEICE_VALUE[2][6][64];
+int16 EARLYGAME_PEICE_VALUE[15][64];
 
 /**
  * Value of every peice [color][peice] at every index [0, 63] -> [a1, h8]
  * Used for evaluating a position
  */
-//const int16 ENDGAME_PEICE_VALUE[2][6][64];
+int16 ENDGAME_PEICE_VALUE[15][64];
+
+
+const int16 PEICE_STAGE_WEIGHTS[15] = {0, 1, 5, 5, 10, 15, 0, 0, 0, 1, 5, 5, 10, 16, 0};
 
 /**
  * Gives the indices of the 8 directions in the NUM_SQUARES_TO_EDGE array
@@ -385,3 +391,5 @@ const uint64 ZOBRIST_KINGSIDE_CASTLING_KEYS[2] = {5362052560224176793ULL, 711706
  * Random 64 bit keys for denoting queenside castling rights
  */
 const uint64 ZOBRIST_QUEENSIDE_CASTLING_KEYS[2] = {12085591603708853699ULL, 17859103354573023985ULL};
+
+#endif
