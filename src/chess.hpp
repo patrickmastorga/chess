@@ -60,23 +60,25 @@ struct StandardMove
     /**
      * Starting square of the move [0, 63] -> [a1, h8]
      */
-    const int startSquare;
+    int startSquare;
 
     /**
      * Ending square of the move [0, 63] -> [a1, h8]
      */
-    const int targetSquare;
+    int targetSquare;
 
     /**
      * In case of promotion, what is the indentity of the promoted peice
      * 0 - none; 1 - knight; 2 - bishop; 3 - rook; 4 - queen
      */
-    const int promotion;
+    int promotion;
 
     /**
      * Constructor for Standard Move
     */
     StandardMove(int start, int target, int promotion=0) : startSquare(start), targetSquare(target), promotion(promotion) {}
+
+    StandardMove() : StandardMove(0, 0) {}
 
     /**
      * Override equality operator 

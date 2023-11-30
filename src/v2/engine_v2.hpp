@@ -13,8 +13,9 @@
 #include "board.hpp"
 #include "precomputed.hpp"
 
-#define MAX_DEPTH = 32
-#define MOVE_STACK_SIZE = 1500
+#define MAX_DEPTH 32
+#define MOVE_STACK_SIZE 1500
+#define MAX_EVAL INT16_MAX
 
 typedef std::int_fast16_t _int;
 typedef std::uint_fast64_t uint64;
@@ -170,16 +171,49 @@ private:
         return nodes;
     }
 
-    _int search_std(_int depth, Board::Move *moveStack, _int startMoves)
+    // Standard minimax search
+    _int search_std(_int plyFromRoot, _int depth, Board::Move *moveStack, _int startMoves)
     {
-        // TODO
-        return 0;
+        // BASE CASES
+        if (depth == 0) {
+            return evaluate() * colorToMove();
+        }
+        if (board.isDrawByFiftyMoveRule() || board.repititionOcurred() || board.isDrawByInsufficientMaterial()) {
+            return 0;
+        }
+
+        // GENERATE/ORDER MOVES
+        _int endMoves = startMoves;
+        board.generatePseudoLegalMoves(moveStack, endMoves);
+
+        // COMPUTE EVALUATION
+        _int bestEval = INT16_MIN;
+        bool zeroLegalMoves = true;
+
+        for (_int i = startMoves; i < endMoves; ++i) {
+            if (board.makeMove(moveStack[i])) {
+                zeroLegalMoves = false;
+
+                _int eval = -search_std(plyFromRoot + 1, depth - 1, moveStack, endMoves);
+
+                if (eval > bestEval) {
+                    bestEval = eval;
+                }
+                board.unmakeMove(moveStack[i]);
+            }
+        }
+
+        if (zeroLegalMoves) {
+            return inCheck() ? -(MAX_EVAL - plyFromRoot) * colorToMove() : 0;
+        }
+
+        return bestEval;
     }
 
+    // Static evaluation function
     _int evaluate()
     {
-        // TODO
-        return 0;
+        return board.positionalMaterialInbalance();
     }
 };
 

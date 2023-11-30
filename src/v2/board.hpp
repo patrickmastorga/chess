@@ -98,6 +98,22 @@ public:
         {
             flags |= LEGAL;
         }
+
+        inline _int earlygamePositionalMaterialChange() noexcept
+        {
+            if (!posmatInit) {
+                initializePosmat();
+            }
+            return earlyPosmat;
+        }
+
+        inline _int endgamePositionalMaterialChange() noexcept
+        {
+            if (!posmatInit) {
+                initializePosmat();
+            }
+            return endPosmat;
+        }
         
         // Heuristic geuss for the strength of the move (used for move ordering)
         _int strengthGuess; 
@@ -131,7 +147,7 @@ public:
 
         // CONSTRUCTORS
         // Construct a new Move object from the given board and given flags (en_passant, castle, promotion, etc.)
-        Move(const Board *board, _int start, _int target, _int givenFlags) : startSquare(start), targetSquare(target), flags(givenFlags), strengthGuess(0)
+        Move(const Board *board, _int start, _int target, _int givenFlags) : startSquare(start), targetSquare(target), flags(givenFlags), strengthGuess(0), posmatInit(false), earlyPosmat(0), endPosmat(0)
         {
             movingPeice = board->peices[start];
             capturedPeice = board->peices[target];
@@ -140,7 +156,7 @@ public:
             }
         }
 
-        Move() : startSquare(0), targetSquare(0), movingPeice(0), capturedPeice(0), flags(0), strengthGuess(0) {}
+        Move() : startSquare(0), targetSquare(0), movingPeice(0), capturedPeice(0), flags(0), strengthGuess(0), posmatInit(false), earlyPosmat(0), endPosmat(0) {}
         
         // FLAGS
         static constexpr _int NONE       = 0b00000000;
@@ -163,6 +179,56 @@ public:
 
         // 8 bit flags of move
         _int flags;
+
+        bool posmatInit;
+
+        _int earlyPosmat;
+        _int endPosmat;
+
+        void initializePosmat() noexcept
+        {
+            // Update zobrist hash, numpieces and positonal imbalance for moving peice
+            earlyPosmat -= EARLYGAME_PEICE_VALUE[moving()][start()];
+            endPosmat -= ENDGAME_PEICE_VALUE[moving()][start()];
+            if (promotion()) {
+                earlyPosmat += EARLYGAME_PEICE_VALUE[color() + promotion()][target()];
+                endPosmat += ENDGAME_PEICE_VALUE[color() + promotion()][target()];
+            } else {
+                earlyPosmat += EARLYGAME_PEICE_VALUE[moving()][target()];
+                endPosmat += ENDGAME_PEICE_VALUE[moving()][target()];
+            }
+            
+
+            // Update zobrist hash and peice indices set for capture
+            if (captured()) {
+                _int captureSquare = isEnPassant() ? target() - 8 + 16 * (color() >> 3) : target();
+                earlyPosmat -= EARLYGAME_PEICE_VALUE[captured()][captureSquare];
+                endPosmat -= ENDGAME_PEICE_VALUE[captured()][captureSquare];
+            }
+
+            // Update rooks for castling
+            if (isCastling()) {
+                _int rookStart;
+                _int rookEnd;
+
+                _int castlingRank = target() & 0b11111000;
+                if (target() % 8 < 4) {
+                    // Queenside castling
+                    rookStart = castlingRank;
+                    rookEnd = castlingRank + 3;
+                } else {
+                    // Kingside castling
+                    rookStart = castlingRank + 7;
+                    rookEnd = castlingRank + 5;
+                }
+
+                earlyPosmat -= EARLYGAME_PEICE_VALUE[color() + ROOK][rookStart];
+                endPosmat -= ENDGAME_PEICE_VALUE[color() + ROOK][rookStart];
+                earlyPosmat += EARLYGAME_PEICE_VALUE[color() + ROOK][rookEnd];
+                endPosmat += ENDGAME_PEICE_VALUE[color() + ROOK][rookEnd];
+            }
+            posmatInit = true;
+        }
     };
 
 
@@ -178,9 +244,9 @@ public:
         }
         numTotalPeices[0] = 0;
         numTotalPeices[1] = 0;
-        _int material_stage_weight = 0;
-        _int earlygamePositionalMaterialInbalance = 0;
-        _int endgamePositionalMaterialInbalance = 0;
+        material_stage_weight = 0;
+        earlygamePositionalMaterialInbalance = 0;
+        endgamePositionalMaterialInbalance = 0;
        
         zobrist = 0;
         
@@ -362,7 +428,7 @@ public:
                 ++numTotalPeices[peice >> 3];
                 material_stage_weight += PEICE_STAGE_WEIGHTS[peice];
                 earlygamePositionalMaterialInbalance += EARLYGAME_PEICE_VALUE[peice][i];
-                endgamePositionalMaterialInbalance += EARLYGAME_PEICE_VALUE[peice][i];
+                endgamePositionalMaterialInbalance += ENDGAME_PEICE_VALUE[peice][i];
             }
         }
     }
@@ -1150,22 +1216,21 @@ public:
 
         // UPDATE PEICE DATA / ZOBRIST HASH
         // Update zobrist hash for turn change
-        zobrist ^= ZOBRIST_TURN_KEY; 
+        zobrist ^= ZOBRIST_TURN_KEY;
+
+        earlygamePositionalMaterialInbalance += move.earlygamePositionalMaterialChange();
+        endgamePositionalMaterialInbalance += move.endgamePositionalMaterialChange();
 
         // Update zobrist hash, numpieces and positonal imbalance for moving peice
         zobrist ^= ZOBRIST_PEICE_KEYS[c][move.moving() % (1 << 3) - 1][move.start()];
-        earlygamePositionalMaterialInbalance -= EARLYGAME_PEICE_VALUE[move.moving()][move.start()];
-        endgamePositionalMaterialInbalance -= ENDGAME_PEICE_VALUE[move.moving()][move.start()];
         if (move.promotion()) {
             zobrist ^= ZOBRIST_PEICE_KEYS[c][move.promotion() - 1][move.target()];
-            earlygamePositionalMaterialInbalance += EARLYGAME_PEICE_VALUE[color + move.promotion()][move.target()];
-            endgamePositionalMaterialInbalance += ENDGAME_PEICE_VALUE[color + move.promotion()][move.target()];
             --numPeices[move.moving()];
             ++numPeices[color + move.promotion()];
+            material_stage_weight -= PEICE_STAGE_WEIGHTS[move.moving()];
+            material_stage_weight += PEICE_STAGE_WEIGHTS[color + move.promotion()];
         } else {
             zobrist ^= ZOBRIST_PEICE_KEYS[c][move.moving() % (1 << 3) - 1][move.target()];
-            earlygamePositionalMaterialInbalance += EARLYGAME_PEICE_VALUE[move.moving()][move.target()];
-            endgamePositionalMaterialInbalance += ENDGAME_PEICE_VALUE[move.moving()][move.target()];
         }
         
 
@@ -1173,10 +1238,9 @@ public:
         if (move.captured()) {
             _int captureSquare = move.isEnPassant() ? move.target() - 8 + 16 * c : move.target();
             zobrist ^= ZOBRIST_PEICE_KEYS[e][move.captured() % (1 << 3) - 1][captureSquare];
-            earlygamePositionalMaterialInbalance -= EARLYGAME_PEICE_VALUE[move.captured()][captureSquare];
-            endgamePositionalMaterialInbalance -= ENDGAME_PEICE_VALUE[move.captured()][captureSquare];
             --numPeices[move.captured()];
             --numTotalPeices[e];
+            material_stage_weight -= PEICE_STAGE_WEIGHTS[move.captured()];
         }
 
         // Update rooks for castling
@@ -1199,10 +1263,6 @@ public:
             peices[rookStart] = 0;
             zobrist ^= ZOBRIST_PEICE_KEYS[c][ROOK - 1][rookStart];
             zobrist ^= ZOBRIST_PEICE_KEYS[c][ROOK - 1][rookEnd];
-            earlygamePositionalMaterialInbalance -= EARLYGAME_PEICE_VALUE[color + ROOK][rookStart];
-            endgamePositionalMaterialInbalance -= ENDGAME_PEICE_VALUE[color + ROOK][rookStart];
-            earlygamePositionalMaterialInbalance += EARLYGAME_PEICE_VALUE[color + ROOK][rookEnd];
-            endgamePositionalMaterialInbalance += ENDGAME_PEICE_VALUE[color + ROOK][rookEnd];
         }
 
         // UPDATE BOARD FLAGS
@@ -1252,7 +1312,7 @@ public:
     }
 
     // update the board to reverse the inputted move (must have just been move previously played)
-    void unmakeMove(const Move &move)
+    void unmakeMove(Move &move)
     {
         _int c = move.moving() >> 3;
         _int color = c << 3;
@@ -1261,13 +1321,14 @@ public:
 
         // UNDO PEICE DATA / ZOBRIST HASH
         // Undo zobrist hash for turn change
-        zobrist ^= ZOBRIST_TURN_KEY; 
+        zobrist ^= ZOBRIST_TURN_KEY;
+
+        earlygamePositionalMaterialInbalance -= move.earlygamePositionalMaterialChange();
+        endgamePositionalMaterialInbalance -= move.endgamePositionalMaterialChange();
 
         // Undo peice array, zobrist hash, and peice indices set for moving peice
         peices[move.start()] = move.moving();
         peices[move.target()] = move.captured();
-        earlygamePositionalMaterialInbalance += EARLYGAME_PEICE_VALUE[move.moving()][move.start()];
-        endgamePositionalMaterialInbalance += ENDGAME_PEICE_VALUE[move.moving()][move.start()];
         if (move.isEnPassant()) {
             peices[move.target()] = 0;
             peices[move.target() - 8 + 16 * c] = move.captured();
@@ -1275,14 +1336,12 @@ public:
         if (move.promotion()) {
             ++numPeices[move.moving()];
             --numPeices[color + move.promotion()];
+            material_stage_weight += PEICE_STAGE_WEIGHTS[move.moving()];
+            material_stage_weight -= PEICE_STAGE_WEIGHTS[color + move.promotion()];
             zobrist ^= ZOBRIST_PEICE_KEYS[c][move.promotion() - 1][move.target()];
-            earlygamePositionalMaterialInbalance -= EARLYGAME_PEICE_VALUE[color + move.promotion()][move.target()];
-            endgamePositionalMaterialInbalance -= ENDGAME_PEICE_VALUE[color + move.promotion()][move.target()];
             
         } else {
             zobrist ^= ZOBRIST_PEICE_KEYS[c][move.moving() % (1 << 3) - 1][move.target()];
-            earlygamePositionalMaterialInbalance -= EARLYGAME_PEICE_VALUE[move.moving()][move.target()];
-            endgamePositionalMaterialInbalance -= ENDGAME_PEICE_VALUE[move.moving()][move.target()];
         }
         zobrist ^= ZOBRIST_PEICE_KEYS[c][move.moving() % (1 << 3) - 1][move.start()];
 
@@ -1290,8 +1349,7 @@ public:
         if (move.captured()){
             _int captureSquare = move.isEnPassant() ? move.target() - 8 + 16 * c : move.target();
             zobrist ^= ZOBRIST_PEICE_KEYS[e][move.captured() % (1 << 3) - 1][captureSquare];
-            earlygamePositionalMaterialInbalance += EARLYGAME_PEICE_VALUE[move.captured()][captureSquare];
-            endgamePositionalMaterialInbalance += ENDGAME_PEICE_VALUE[move.captured()][captureSquare];
+            material_stage_weight += PEICE_STAGE_WEIGHTS[move.captured()];
             ++numPeices[move.captured()];
             ++numTotalPeices[e];
         }
@@ -1316,10 +1374,6 @@ public:
             peices[rookEnd] = 0;
             zobrist ^= ZOBRIST_PEICE_KEYS[c][ROOK - 1][rookStart];
             zobrist ^= ZOBRIST_PEICE_KEYS[c][ROOK - 1][rookEnd];
-            earlygamePositionalMaterialInbalance += EARLYGAME_PEICE_VALUE[color + ROOK][rookStart];
-            endgamePositionalMaterialInbalance += ENDGAME_PEICE_VALUE[color + ROOK][rookStart];
-            earlygamePositionalMaterialInbalance -= EARLYGAME_PEICE_VALUE[color + ROOK][rookEnd];
-            endgamePositionalMaterialInbalance -= ENDGAME_PEICE_VALUE[color + ROOK][rookEnd];
         }
 
         // UBDO BOARD FLAGS
@@ -1440,6 +1494,12 @@ public:
         fen += '1' + totalHalfmoves / 2;
 
         return fen;
+    }
+
+    // returns a heuristic evaluation of the position based on the total material and positions of the peices on the board
+    _int positionalMaterialInbalance() const noexcept
+    {
+        return (material_stage_weight * earlygamePositionalMaterialInbalance + (128 - material_stage_weight) * endgamePositionalMaterialInbalance) / 128;
     }
 
 
