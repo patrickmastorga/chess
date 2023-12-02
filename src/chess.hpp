@@ -113,7 +113,7 @@ public:
     /**
      * Loads the starting position into the engine
      */
-    virtual void loadStartingPosition() noexcept = 0;
+    virtual void loadStartingPosition() = 0;
 
     /**
      * Loads the specified position into the engine
@@ -124,7 +124,7 @@ public:
     /**
      * @return std::vector<StandardMove> of legal moves for the current position
      */
-    virtual std::vector<StandardMove> legalMoves() noexcept = 0;
+    virtual std::vector<StandardMove> getLegalMoves() noexcept = 0;
 
     /**
      * @return -1 if black is to move, or 1 if white is to move
