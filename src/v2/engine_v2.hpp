@@ -1,5 +1,5 @@
-#ifndef BOARD_H
-#define BOARD_H
+#ifndef ENGINE_V2_H
+#define ENGINE_V2_H
 
 #include <cstdint>
 #include <iostream>
@@ -1566,7 +1566,7 @@ private:
         return false;
     }
 
-     // return true if the king belonging to the inputted color is currently being attacked
+    // return true if the king belonging to the inputted color is currently being attacked
     bool inCheck(_int c) const
     {
         // TODO Backwards check searching during endgame
