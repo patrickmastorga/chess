@@ -1,5 +1,5 @@
-#ifndef PRECOMPUTED_H
-#define PRECOMPUTED_H
+#ifndef PRECOMPUTED_CHESS_DATA_H
+#define PRECOMPUTED_CHESS_DATA_H
 
 #include <cstdint>
 

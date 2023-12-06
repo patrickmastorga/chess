@@ -1,7 +1,5 @@
 #include <cstdint>
 
-#include "board.hpp"
-
 typedef std::uint_fast8_t uint8;
 typedef std::int_fast8_t int8;
 typedef std::uint_fast16_t uint16;

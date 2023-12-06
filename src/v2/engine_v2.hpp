@@ -13,7 +13,10 @@
 #include <sstream>
 #include <cctype>
 
-#include "precomputed.hpp"
+#include <random>
+
+#include "../precomputed_chess_data.hpp"
+#include "precomputed_engine_data.hpp"
 #include "../chess.hpp"
 
 #define MAX_GAME_LENGTH 500
@@ -75,10 +78,16 @@ public:
             throw std::runtime_error("Game is over, cannot get computer move!");
         }
         // TODO
-        return StandardMove(0, 0, 0);
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> distribution(0, enginePositionMoves.size() - 1);
+        int randomIndex = distribution(gen);
+        Move move = enginePositionMoves[randomIndex];
+
+        return StandardMove(move.start(), move.target(), std::max(move.promotion() - 1, 0L));
     }
 
-    void inputMove(StandardMove &move) override
+    void inputMove(const StandardMove &move) override
     {
         if (gameOver().has_value()) {
             throw std::runtime_error("Game is over, cannot input move!");

@@ -140,7 +140,7 @@ public:
     /**
      * Updates the position stored in the engine with the inputted move
      */
-    virtual void inputMove(StandardMove &move) = 0;
+    virtual void inputMove(const StandardMove &move) = 0;
 
     /**
      * @return a value if game is over (-1 if black has won, 0 if forced draw, 1 if white has won)

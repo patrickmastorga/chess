@@ -10,7 +10,8 @@
 #include <sstream>
 #include <cctype>
 
-#include "precomputed.hpp"
+#include "../precomputed_chess_data.hpp"
+#include "../chess.hpp"
 
 #define LIGHT_SQUARE_COLOR sf::Color(0xf0, 0xd9, 0xb5)
 #define DARK_SQUARE_COLOR sf::Color(0xb5, 0x88, 0x63)
@@ -164,6 +165,27 @@ public:
         return std::nullopt;
     }
     
+    void inputMove(StandardMove &move)
+    {
+        makeMove(Move(this, move));
+        resetSquareHighlights();
+    }
+
+    bool bottomPlayerToMove() const
+    {
+        return totalHalfmoves % 2 == !bottomIsWhite;
+    }
+
+    std::optional<StandardMove> getLastMovePlayed() const
+    {
+        if (previousMove.empty()) {
+            return std::nullopt;
+        }
+
+        Move move = previousMove.top();
+        
+        return StandardMove(move.start(), move.target(), std::max(move.promotion() - 1, 0));
+    }
 
 private:    
     // DEFINITIONS
@@ -252,6 +274,23 @@ private:
             capturedPeice = board->peices[target];
             if (isEnPassant()) {
                 capturedPeice = enemy() + PAWN;
+            }
+        }
+
+        Move(const DrawableBoard *board, StandardMove &move) : startSquare(move.startSquare), targetSquare(move.targetSquare)
+        {
+            movingPeice = board->peices[startSquare];
+            capturedPeice = board->peices[targetSquare];
+
+            flags = move.promotion + 1;
+
+            if (movingPeice & 0b111 == KING && std::abs(targetSquare - startSquare) == 2) {
+                flags |= CASTLE;
+            
+            } else if (movingPeice & 0b111 == PAWN && targetSquare == board->eligibleEnPassantSquare.top()) {
+                flags |= EN_PASSANT;
+                capturedPeice = enemy() + PAWN;
+
             }
         }
 
@@ -764,7 +803,7 @@ private:
     }
     
     // update the board based on the inputted move (must be legal)
-    void makeMove(Move &move)
+    void makeMove(const Move &move)
     {
         positionHistory.push_front(zobrist);
         
@@ -885,7 +924,7 @@ private:
     }
 
     // update the board to reverse the inputted move (must have just been move previously played)
-    void unmakeMove(Move &move)
+    void unmakeMove(const Move &move)
     {
         int c = move.moving() >> 3;
         int color = c << 3;
@@ -1248,7 +1287,7 @@ private:
     }
 
     // return true if inputted pseudo legal move is legal in the current position
-    bool isLegal(Move &move)
+    bool isLegal(const Move &move)
     {
         int c = move.moving() >> 3;
         int color = c << 3;
@@ -1291,7 +1330,7 @@ private:
 
     // @param move pseudo legal castling move (castling rights are not lost and king is not in check)
     // @return true if the castling move is legal in the current position
-    bool castlingMoveIsLegal(Move &move) {
+    bool castlingMoveIsLegal(const Move &move) {
         if (inCheck()) {
             return false;
         }
