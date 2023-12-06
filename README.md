@@ -1,5 +1,5 @@
 # chess
-Check out what I've been working on recently! A chess program written in C++! So far just getting started
+Check out what I've been working on recently! A chess engine written in C++! So far just getting started
 
 Planned features:
  - pseudo-legal move generation
