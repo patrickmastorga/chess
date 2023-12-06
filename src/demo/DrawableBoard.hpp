@@ -187,6 +187,12 @@ public:
         return StandardMove(move.start(), move.target(), std::max(move.promotion() - 1, 0));
     }
 
+    void reset(bool whiteOnBottom)
+    {
+        bottomIsWhite = whiteOnBottom;
+        initialize("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", whiteOnBottom);
+    }
+
 private:    
     // DEFINITIONS
     static constexpr int WHITE = 0b0000;
@@ -282,7 +288,7 @@ private:
             movingPeice = board->peices[startSquare];
             capturedPeice = board->peices[targetSquare];
 
-            flags = move.promotion + 1;
+            flags = move.promotion ? move.promotion + 1 : 0;
 
             if (movingPeice & 0b111 == KING && std::abs(targetSquare - startSquare) == 2) {
                 flags |= CASTLE;
