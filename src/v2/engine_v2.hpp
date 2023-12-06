@@ -1259,6 +1259,8 @@ private:
     // returns true if move was legal and process completed
     bool makeMove(Move &move)
     {
+        positionHistory[totalHalfmoves] = static_cast<uint32>(zobrist);
+        
         _int c = move.moving() >> 3;
         _int color = c << 3;
         _int e = !color;
@@ -1395,7 +1397,6 @@ private:
             }
         }
 
-        positionHistory[totalHalfmoves - 1] = static_cast<uint32>(zobrist);
         return true;
     }
 
