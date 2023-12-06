@@ -1,37 +1,93 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Graphics/Font.hpp>
 #include <chrono>
-#include <string>
+#include <optional>
 #include "DrawableBoard.hpp"
 #include "../chess.hpp"
 #include "../v2/engine_v2.hpp"
 
-void drawTitle(sf::RenderTarget& target, int width, const std::string &text) {
+#define TITLE_HEIGHT 40.0f
+#define DISTANCE_FROM_TOP 3.0f
+#define TITLE_SIZE 26U
+#define SUBTITLE_SIZE 12U
+
+#define ENGINE_NAME "engine_v2"
+
+
+/*
+THINGS THAT NEED FIXING
+ - Threefold repitition
+ - Promotion
+*/
+
+void drawTitle(sf::RenderTarget& target, bool whiteOnBottom, std::optional<int> gameOver=std::nullopt) {
     // Title bar settings
-    sf::RectangleShape titleBar(sf::Vector2f(target.getSize().x, width));
+    sf::RectangleShape titleBar(sf::Vector2f(target.getSize().x, TITLE_HEIGHT));
     titleBar.setFillColor(sf::Color(40, 40, 40)); // Dark grey color
 
-    // Use the default font
+    // Load font
     sf::Font font;
-    font.loadFromFile();
+    font.loadFromFile("assets/fonts/arial.ttf");
 
-    sf::Text titleText("Your Title Here", font, 18);
-    titleText.setFillColor(sf::Color::White);
+    // Middle text
+    sf::Text middle("  vs.  ", font, TITLE_SIZE);
+    middle.setFillColor(sf::Color::White);
 
-    // Calculate the position to center the text horizontally
-    float textWidth = titleText.getGlobalBounds().width;
+    // Calculate position
+    float textWidth = middle.getGlobalBounds().width;
     float windowWidth = static_cast<float>(target.getSize().x);
-    titleText.setPosition((windowWidth - textWidth) / 2.0f, 5);
+    sf::Vector2f titlePos((windowWidth - textWidth) / 2.0f, DISTANCE_FROM_TOP);
+    middle.setPosition(titlePos);
+
+    // Calculate text color
+    auto leftColor = sf::Color::White;
+    auto rightColor = sf::Color::White;
+    if (gameOver.has_value()) {
+        if (gameOver.value() == 0) {
+            leftColor = sf::Color::Yellow;
+            rightColor = sf::Color::Yellow;
+        
+        } else {
+            leftColor = gameOver.value() > 0 ? sf::Color::Green : sf::Color::Red;
+            rightColor = gameOver.value() < 0 ? sf::Color::Green : sf::Color::Red;
+        }
+    }
+
+    // White player
+    sf::Text left(whiteOnBottom ? "human" : ENGINE_NAME, font, TITLE_SIZE);
+    left.setOrigin(left.getGlobalBounds().width, 0.0f);
+    left.setFillColor(leftColor);
+    left.setPosition(titlePos);
+
+    // Black player
+    sf::Text right(!whiteOnBottom ? "human" : ENGINE_NAME, font, TITLE_SIZE);
+    right.setOrigin(-middle.getGlobalBounds().width, 0.0f);
+    right.setFillColor(rightColor);
+    right.setPosition(titlePos);
+
+    // Controls
+    sf::Text controls1("reset (enter)", font, TITLE_SIZE / 2);
+    sf::Text controls2("switch (tab)", font, TITLE_SIZE / 2);
+    controls1.setPosition(2.0f, DISTANCE_FROM_TOP / 2.0f);
+    controls2.setPosition(2.0f, TITLE_HEIGHT / 2.0f + DISTANCE_FROM_TOP / 2.0f);
+    controls1.setFillColor(sf::Color(150, 150, 150));
+    controls2.setFillColor(sf::Color(150, 150, 150));
+    
+
+    target.draw(titleBar);
+    target.draw(middle);
+    target.draw(left);
+    target.draw(right);
+    target.draw(controls1);
+    target.draw(controls2);
 }
 
 int main()
 {
-    sf::RenderWindow window(sf::VideoMode(960, 960), "chessgui", sf::Style::Close | sf::Style::Titlebar);
-    auto desktop = sf::VideoMode::getDesktopMode();
-    window.setPosition(sf::Vector2i(desktop.width/2 - window.getSize().x/2, desktop.height/2 - window.getSize().y/2 - 50));
+    sf::RenderWindow window(sf::VideoMode(960, 960 + TITLE_HEIGHT), "chessgui", sf::Style::Close | sf::Style::Titlebar);
+    window.setFramerateLimit(60);
     
-    int titleWidth = 40;
-    sf::Vector2f boardPosition(0, titleWidth);
+    sf::Vector2f boardPosition(0, TITLE_HEIGHT);
     bool whiteOnBottom = true;
     bool gameOver = false;
     bool mouseHold = false;
@@ -70,12 +126,13 @@ int main()
             }
         }
 
+
         if (gameOver) {
             continue;
         }
 
         // Update screen
-        window.clear();
+        drawTitle(window, whiteOnBottom);
         window.draw(board);
         window.display();
 
@@ -105,6 +162,8 @@ int main()
             // Check if player move has ended game
             if (board.gameOver().has_value()) {
                 gameOver = true;
+                drawTitle(window, whiteOnBottom, board.gameOver());
+                window.display();
                 continue;
             }
 
@@ -124,6 +183,8 @@ int main()
             // Check if computer move has ended game
             if (board.gameOver().has_value()) {
                 gameOver = true;
+                drawTitle(window, whiteOnBottom, board.gameOver());
+                window.display();
                 continue;
             }
 
