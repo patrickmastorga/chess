@@ -1,0 +1,5 @@
+ideas for improvement:
+ - redo system for detecting checks and pins (king lane table) (could be used for ordering/eval)
+ - refactor move class and move making
+ - refactor enpassant/hmspmoc/positionhistory
+ - consider system of storing list/map of pseudo legal moves and incrementally updating (could help for mobility) (clean up makeMove/unmakeMove/Move struct first)
