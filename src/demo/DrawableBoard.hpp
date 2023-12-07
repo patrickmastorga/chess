@@ -25,6 +25,8 @@
 #define LIGHT_PREVIOUS_MOVE sf::Color(0xA0, 0xD0, 0xE0) * sf::Color(200, 200, 200)
 #define DARK_PREVIOUS_MOVE LIGHT_PREVIOUS_MOVE
 
+#define GENERATE_ONLY_QUEEN_PROMOTIONS true
+
 typedef std::uint_fast64_t uint64;
 
 class DrawableBoard : public sf::Drawable
@@ -167,8 +169,27 @@ public:
     
     void inputMove(StandardMove &move)
     {
-        makeMove(Move(this, move));
-        resetSquareHighlights();
+        if (gameOver().has_value()) {
+            throw std::runtime_error("Game is over, cannot input move!");
+        }
+
+        for (Move &legalMove : currentLegalMoves) {
+            if (GENERATE_ONLY_QUEEN_PROMOTIONS) {
+                if (legalMove.start() == move.startSquare && legalMove.target() == move.targetSquare) {
+                    makeMove(Move(this, move));
+                    resetSquareHighlights();
+                    return;
+                }
+            } else {
+                if (legalMove == move) {
+                    makeMove(legalMove);
+                    resetSquareHighlights();
+                    return;
+                }    
+            }
+        }
+
+        throw std::runtime_error("inputted move is not legal in the current position!");
     }
 
     bool bottomPlayerToMove() const
@@ -184,7 +205,7 @@ public:
 
         Move move = previousMove.top();
         
-        return StandardMove(move.start(), move.target(), std::max(move.promotion() - 1, 0));
+        return StandardMove(move.start(), move.target(), move.promotion());
     }
 
     void reset(bool whiteOnBottom)
@@ -269,7 +290,14 @@ private:
         {
             return this->start() == other.start()
                 && this->target() == other.target()
-                && this->flags & PROMOTION == other.flags & PROMOTION;
+                && this->promotion() == other.promotion();
+        }
+
+        inline bool operator==(const StandardMove& other) const
+        {
+            return this->start() == other.startSquare
+                && this->target() == other.targetSquare
+                && this->promotion() == other.promotion;
         }
 
         // CONSTRUCTORS
@@ -288,12 +316,12 @@ private:
             movingPeice = board->peices[startSquare];
             capturedPeice = board->peices[targetSquare];
 
-            flags = move.promotion ? move.promotion + 1 : 0;
+            flags = move.promotion;
 
-            if (movingPeice & 0b111 == KING && std::abs(targetSquare - startSquare) == 2) {
+            if ((movingPeice & 0b111) == KING && std::abs(targetSquare - startSquare) == 2) {
                 flags |= CASTLE;
             
-            } else if (movingPeice & 0b111 == PAWN && targetSquare == board->eligibleEnPassantSquare.top()) {
+            } else if ((movingPeice & 0b111) == PAWN && targetSquare == board->eligibleEnPassantSquare.top()) {
                 flags |= EN_PASSANT;
                 capturedPeice = enemy() + PAWN;
 
@@ -601,9 +629,11 @@ private:
                         // Pawn foward moves
                         if (!peices[ahead]) {
                             if (promotion) {
-                                moves.emplace_back(this, s, ahead, KNIGHT);
-                                moves.emplace_back(this, s, ahead, BISHOP);
-                                moves.emplace_back(this, s, ahead, ROOK);
+                                if (!GENERATE_ONLY_QUEEN_PROMOTIONS) {
+                                    moves.emplace_back(this, s, ahead, KNIGHT);
+                                    moves.emplace_back(this, s, ahead, BISHOP);
+                                    moves.emplace_back(this, s, ahead, ROOK);    
+                                }
                                 moves.emplace_back(this, s, ahead, QUEEN);
                             } else {
                                 moves.emplace_back(this, s, ahead);
@@ -619,9 +649,11 @@ private:
                         // Pawn captures
                         if (file != 0 && peices[ahead - 1] && peices[ahead - 1] >> 3 == e) {
                             if (promotion) {
-                                moves.emplace_back(this, s, ahead - 1, KNIGHT);
-                                moves.emplace_back(this, s, ahead - 1, BISHOP);
-                                moves.emplace_back(this, s, ahead - 1, ROOK);
+                                if (!GENERATE_ONLY_QUEEN_PROMOTIONS) {
+                                    moves.emplace_back(this, s, ahead - 1, KNIGHT);
+                                    moves.emplace_back(this, s, ahead - 1, BISHOP);
+                                    moves.emplace_back(this, s, ahead - 1, ROOK);    
+                                }
                                 moves.emplace_back(this, s, ahead - 1, QUEEN);
                             } else {
                                 moves.emplace_back(this, s, ahead - 1);
@@ -629,9 +661,11 @@ private:
                         }
                         if (file != 7 && peices[ahead + 1] && peices[ahead + 1] >> 3 == e) {
                             if (promotion) {
-                                moves.emplace_back(this, s, ahead + 1, KNIGHT);
-                                moves.emplace_back(this, s, ahead + 1, BISHOP);
-                                moves.emplace_back(this, s, ahead + 1, ROOK);
+                                if (!GENERATE_ONLY_QUEEN_PROMOTIONS) {
+                                    moves.emplace_back(this, s, ahead + 1, KNIGHT);
+                                    moves.emplace_back(this, s, ahead + 1, BISHOP);
+                                    moves.emplace_back(this, s, ahead + 1, ROOK);    
+                                }
                                 moves.emplace_back(this, s, ahead + 1, QUEEN);
                             } else {
                                 moves.emplace_back(this, s, ahead + 1);
@@ -1287,7 +1321,7 @@ private:
         fen += ' ';
 
         // Total moves
-        fen += '1' + totalHalfmoves / 2;
+        fen += std::to_string(totalHalfmoves / 2);
 
         return fen;
     }

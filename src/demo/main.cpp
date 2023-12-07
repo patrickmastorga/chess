@@ -4,20 +4,19 @@
 #include <optional>
 #include "DrawableBoard.hpp"
 #include "../chess.hpp"
-#include "../v2/engine_v2.hpp"
+#include "../v1.0/engine_v1.hpp"
 
 #define TITLE_HEIGHT 40.0f
 #define DISTANCE_FROM_TOP 3.0f
 #define TITLE_SIZE 26U
 #define SUBTITLE_SIZE 12U
 
-#define ENGINE_NAME "engine_v2"
+#define ENGINE_NAME "engine_v1.0"
 
 
 /*
 THINGS THAT NEED FIXING
- - Threefold repitition
- - Promotion
+ - Threefold repitition causes exeption
 */
 
 void drawTitle(sf::RenderTarget& target, bool whiteOnBottom, std::optional<int> gameOver=std::nullopt) {
@@ -93,7 +92,7 @@ int main()
     bool mouseHold = false;
 
     DrawableBoard board(boardPosition, whiteOnBottom);
-    EngineV2 engine;
+    EngineV1 engine;
 
     while (window.isOpen())
     {

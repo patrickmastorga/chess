@@ -1,5 +1,5 @@
-#ifndef ENGINE_V2_H
-#define ENGINE_V2_H
+#ifndef ENGINE_V1_H
+#define ENGINE_V1_H
 
 #include <cstdint>
 #include <iostream>
@@ -32,15 +32,15 @@ typedef std::uint_fast64_t uint64;
 
 
 // class representing the current state of the chess game
-class EngineV2 : public StandardEngine
+class EngineV1 : public StandardEngine
 {
 public:
-    EngineV2(std::string &fenString)
+    EngineV1(std::string &fenString)
     {
         loadFEN(fenString);
     }
 
-    EngineV2()
+    EngineV1()
     {
         loadStartingPosition();
     }
@@ -76,15 +76,58 @@ public:
     {
         if (gameOver().has_value()) {
             throw std::runtime_error("Game is over, cannot get computer move!");
-        }
-        // TODO
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_int_distribution<> distribution(0, enginePositionMoves.size() - 1);
-        int randomIndex = distribution(gen);
-        Move move = enginePositionMoves[randomIndex];
+        }        
 
-        return StandardMove(move.start(), move.target(), std::max(move.promotion() - 1, 0L));
+        // Time management variables
+        std::chrono::_V2::system_clock::time_point endSearch = std::chrono::high_resolution_clock::now() + thinkTime;
+        std::chrono::_V2::system_clock::time_point start, end;
+        std::chrono::nanoseconds lastSearchDuration(0);
+        std::chrono::milliseconds totalSearchTime(0);
+
+        Move moveStack[1500];
+
+        std::cout << "SEARCH " << asFEN() << std::endl; 
+
+        // Incrementally increase depth until time is up
+        for (_int depth = 0;; ++depth) {
+            // Calculate the cutoff time to halt search based on last search
+            auto searchCutoff = endSearch - lastSearchDuration * 1.25;
+            start = std::chrono::high_resolution_clock::now();
+            
+            std::cout << "depth " << depth;
+
+            // Run search for each move
+            for (Move &move : enginePositionMoves) {
+                if (std::chrono::high_resolution_clock::now() > searchCutoff) {
+                    std::cout << " timeout";
+                    break;
+                }
+
+                makeMove(move);
+                move.strengthGuess = -search_std(1, depth, moveStack, 0);
+                unmakeMove(move);
+            }
+
+            // Sort moves in order by score
+            std::sort(enginePositionMoves.begin(), enginePositionMoves.end(), [](Move &l, Move &r){ return l.strengthGuess > r.strengthGuess; });
+            std::cout << " bestmove " << enginePositionMoves[0];
+
+            end = std::chrono::high_resolution_clock::now();
+            lastSearchDuration = end - start;
+            totalSearchTime += std::chrono::duration_cast<std::chrono::milliseconds>(lastSearchDuration);
+            std::cout << " time " << std::chrono::duration_cast<std::chrono::milliseconds>(lastSearchDuration).count() << "millis" << std::endl;
+
+            if (std::chrono::high_resolution_clock::now() > searchCutoff) {
+                break;
+            }
+        }
+
+
+        // Return the best move
+        Move bestMove = enginePositionMoves[0];
+        std::cout << "totaltime " << totalSearchTime.count() << "millis" << std::endl;
+        std::cout << bestMove << std::endl;
+        return StandardMove(bestMove.start(), bestMove.target(), bestMove.promotion());
     }
 
     void inputMove(const StandardMove &move) override
@@ -265,7 +308,7 @@ private:
         {
             return this->start() == other.start()
                 && this->target() == other.target()
-                && this->flags & PROMOTION == other.flags & PROMOTION;
+                && this->promotion() == other.promotion();
         }
 
         // Override equality operator with standard move
@@ -273,7 +316,7 @@ private:
         {
             return this->start() == other.startSquare
                 && this->target() == other.targetSquare
-                && std::max(0L, this->flags & PROMOTION - KNIGHT + 1) == other.promotion;
+                && this->promotion() == other.promotion;
         }
 
         // Override stream insertion operator to display info about the move
@@ -289,7 +332,7 @@ private:
 
         // CONSTRUCTORS
         // Construct a new Move object from the given board and given flags (en_passant, castle, promotion, etc.)
-        Move(const EngineV2 *board, _int start, _int target, _int givenFlags) : startSquare(start), targetSquare(target), flags(givenFlags), strengthGuess(0), posmatInit(false), earlyPosmat(0), endPosmat(0)
+        Move(const EngineV1 *board, _int start, _int target, _int givenFlags) : startSquare(start), targetSquare(target), flags(givenFlags), strengthGuess(0), posmatInit(false), earlyPosmat(0), endPosmat(0)
         {
             movingPeice = board->peices[start];
             capturedPeice = board->peices[target];
@@ -1755,7 +1798,7 @@ private:
         fen += ' ';
 
         // Total moves
-        fen += '1' + totalHalfmoves / 2;
+        fen += std::to_string(totalHalfmoves / 2);
 
         return fen;
     }
@@ -1896,7 +1939,7 @@ private:
     }
 
 
-    //SEARCH/EVAL METHODS    
+    //SEARCH/EVAL METHODS
     // returns number of total positions a certain depth away
     std::uint64_t perft_h(_int depth, Move *moveStack, _int startMoves)
     {
@@ -1969,6 +2012,8 @@ private:
     {
         return (material_stage_weight * earlygamePositionalMaterialInbalance + (128 - material_stage_weight) * endgamePositionalMaterialInbalance) / 128;
     }
+
+    // Class for ordering
 
 };
 

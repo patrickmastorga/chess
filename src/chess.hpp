@@ -69,7 +69,7 @@ struct StandardMove
 
     /**
      * In case of promotion, what is the indentity of the promoted peice
-     * 0 - none; 1 - knight; 2 - bishop; 3 - rook; 4 - queen
+     * 0 - none; 2 - knight; 3 - bishop; 4 - rook; 5 - queen
      */
     int promotion;
 
