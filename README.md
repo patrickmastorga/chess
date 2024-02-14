@@ -1,8 +1,8 @@
-## Chess Engine
+# Chess Engine
 Chess Engine written in C++ from scratch
 
 
-# Move generation
+### Move generation
 Use a hybrid of pseudo legal and legal move generation
  - Code always checks if king is in check and if any peices sre pinned before generating moves
  - King moves are pseudo legal
@@ -11,7 +11,7 @@ Use a hybrid of pseudo legal and legal move generation
 In the future, I might implement bitboard representations of the board to speed up move generation
 
 
-# Search Algorithm
+## Search Algorithm
 Minimax search algorithm
 Features I have implemented:
  - Quiscence search
@@ -27,7 +27,7 @@ Features I plan to implement:
  - Late move reduction
 
 
-# Static Evaluation
+## Static Evaluation
 Uses simple earlygame/endgame peice-square tables
 
 Upgrades I have planned:
