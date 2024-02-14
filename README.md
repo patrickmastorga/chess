@@ -12,7 +12,7 @@ Use a hybrid of pseudo legal and legal move generation
 In the future, I might implement bitboard representations of the board to speed up move generation  
 
 ### Search Algorithm
-Minimax search algorithm  
+The engine uses the minimax search algorithm  
 Features I have implemented:
  - Quiscence search
  - Iterative deepening
@@ -32,12 +32,13 @@ Uses simple earlygame/endgame peice-square tables
 Upgrades I have planned:
  - King safety
  - Mobility
- - Pawn structure
+ - Pawn structure  
+
 I plan on expirimenting with using a neural network for static evaluation  
 
 ## Other programs
 ### Graphical Demo
-Simple GUI for displaying ant interacting with a game in a window using SFML 2.6  
+Simple GUI for displaying and interacting with a chess game in a desktop window using SFML 2.6  
 
 ### Engine Test
 Includes resources for perft-testing engine and testing search efficiency  
