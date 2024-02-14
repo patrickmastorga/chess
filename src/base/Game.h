@@ -15,13 +15,6 @@
 
 #define GENERATE_ONLY_QUEEN_PROMOTIONS true
 
-typedef std::int_fast8_t int8;
-typedef std::uint_fast8_t uint8;
-typedef std::int_fast32_t int32;
-typedef std::uint_fast32_t uint32;
-typedef std::uint_fast64_t uint64;
-
-
 /*
 IMPLEMENTATION AND STRUCTURE BASED ON EngineV1_1
 */
@@ -59,18 +52,18 @@ public:
 
 protected:
     // DEFINITIONS
-    static constexpr uint8 WHITE = 0b0000;
-    static constexpr uint8 BLACK = 0b1000;
-    static constexpr uint8 PAWN = 0b001;
-    static constexpr uint8 KNIGHT = 0b010;
-    static constexpr uint8 BISHOP = 0b011;
-    static constexpr uint8 ROOK = 0b100;
-    static constexpr uint8 QUEEN = 0b101;
-    static constexpr uint8 KING = 0b110;
+    static constexpr std::uint_fast8_t WHITE = 0b0000;
+    static constexpr std::uint_fast8_t BLACK = 0b1000;
+    static constexpr std::uint_fast8_t PAWN = 0b001;
+    static constexpr std::uint_fast8_t KNIGHT = 0b010;
+    static constexpr std::uint_fast8_t BISHOP = 0b011;
+    static constexpr std::uint_fast8_t ROOK = 0b100;
+    static constexpr std::uint_fast8_t QUEEN = 0b101;
+    static constexpr std::uint_fast8_t KING = 0b110;
 
     // BOARD MEMBERS
     // color and peice type at every square (index [0, 63] -> [a1, h8])
-    uint8 peices[64];
+    std::uint_fast8_t peices[64];
 
     // Legal moves for the current position stored in the engine
     std::vector<StandardMove> currentLegalMoves;
@@ -82,7 +75,7 @@ protected:
     std::list<StandardMove> gameMoves;
 
     // total half moves since game start (half move is one player taking a turn)
-    uint32 totalHalfmoves;
+    std::uint_fast32_t totalHalfmoves;
 
 private:
     // contains the halfmove number when the kingside castling rights were lost for white or black (index 0 and 1)
@@ -92,25 +85,25 @@ private:
     bool canQueensideCastle[2];
 
     // Square over which a pawn double moved over in the previous turn
-    uint8 eligibleEnPassantSquare;
+    std::uint_fast8_t eligibleEnPassantSquare;
 
     // Used for 50 move rule
-    uint8 halfmovesSincePawnMoveOrCapture;
+    std::uint_fast8_t halfmovesSincePawnMoveOrCapture;
 
     // 32 bit zobrist hash of current position for checking for repitition
-    uint32 positionHistory[50];
+    std::uint_fast32_t positionHistory[50];
 
     // index of the white and black king (index 0 and 1)
-    uint8 kingIndex[2];
+    std::uint_fast8_t kingIndex[2];
 
     // zobrist hash of the current position
-    uint64 zobrist;
+    std::uint_fast64_t zobrist;
 
     // number of peices on the board for either color and for every peice
-    uint8 numPeices[15];
+    std::uint_fast8_t numPeices[15];
 
     // number of total on the board for either color 
-    uint8 numTotalPeices[2];
+    std::uint_fast8_t numTotalPeices[2];
 
     // BOARD METHODS
     // Initialize engine members for position
@@ -129,7 +122,7 @@ private:
     bool isDrawByInsufficientMaterial() const noexcept;
 
     // return true if the king belonging to the inputted color is currently being attacked
-    bool inCheck(uint8 c) const;
+    bool inCheck(std::uint_fast8_t c) const;
 
     // return true if inputted pseudo legal move is legal in the current position
     bool isLegal(const StandardMove& move);

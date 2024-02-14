@@ -5,6 +5,7 @@
 #define STANDARD_ENGINE_CLASS_NAME EngineV1_1
 #define ENGINE_NAME "engine_v1.1"
 #define THINK_TIME 100ms
+#define BOARD_SIZE 960
 //////////////////////////////////////////////////////////
 
 #include <SFML/Graphics.hpp>
@@ -94,7 +95,7 @@ static void drawTitle(sf::RenderTarget& target, bool whiteOnBottom, std::optiona
 int main()
 {
     // SFML window creation
-    sf::Vector2u windowSize(gameSize * 1.75f);
+    sf::Vector2u windowSize(gameSize * (BOARD_SIZE / 960.0f));
     sf::RenderWindow window(sf::VideoMode(windowSize.x, windowSize.y), "demo", sf::Style::Close | sf::Style::Titlebar);
     window.setVerticalSyncEnabled(true);
     sf::Image icon;
@@ -207,8 +208,6 @@ int main()
             }
 
             mouseHold = false;
-
-            std::cout << board.asPGN();
         }
 
     }

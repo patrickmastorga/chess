@@ -15,6 +15,13 @@
 #include "precomputed_chess_data.h"
 #include "chesshelpers.h"
 
+
+typedef std::int_fast8_t int8;
+typedef std::uint_fast8_t uint8;
+typedef std::int_fast32_t int32;
+typedef std::uint_fast32_t uint32;
+typedef std::uint_fast64_t uint64;
+
 constexpr int32 MAX_EVAL = INT32_MAX;
 
 // PUBLIC METHODS
@@ -225,6 +232,8 @@ void Game::inputMove(const StandardMove& move)
             }
         }
     }
+    
+    currentLegalMoves = legalMoves();
 
     if (captured) {
         algebraic += 'x';
@@ -237,8 +246,6 @@ void Game::inputMove(const StandardMove& move)
         algebraic += '=';
         algebraic += algebraicPeiceIndentifiers[move.promotion - 2];
     }
-
-    currentLegalMoves = legalMoves();
 
     if (inCheck()) {
         algebraic += currentLegalMoves.empty() ? '#' : '+';
@@ -315,6 +322,7 @@ std::string Game::asFEN() const noexcept
     if (canQueensideCastle[1]) {
         castlingAvailability += 'q';
     }
+
     if (castlingAvailability.size() == 0) {
         fen += "- ";
     }
@@ -342,10 +350,10 @@ std::string Game::asFEN() const noexcept
 
 std::string Game::asPGN(std::map<std::string, std::string> headers) noexcept
 {
-    if (headers.find("Event") == headers.end()) headers["Event"] = "Unknown";
+    if (headers.find("Event") == headers.end()) headers["Event"] = "??";
     if (headers.find("Date") == headers.end()) headers["Date"] = getCurrentDate();
-    if (headers.find("White") == headers.end()) headers["White"] = "Unknown";
-    if (headers.find("Black") == headers.end()) headers["Black"] = "Unknown";
+    if (headers.find("White") == headers.end()) headers["White"] = "??";
+    if (headers.find("Black") == headers.end()) headers["Black"] = "??";
     if (headers.find("Termination") == headers.end()) headers["Termination"] = gameOver().has_value() ? "Normal" : "Forfeit";
 
     std::string resultStr;
@@ -1129,3 +1137,22 @@ std::string Game::getCurrentDate()
     return ss.str();
 }
 
+/*
+The class in which these errors are occurring is a chess engine class. I did some testing and the error occurs even if return value of the function is not assigned to the class member. Somehow just the calling of the function leads to memory being corrupted. The function doesnt cause an error every time, only in certain chess positions
+This is the general layout of the function which is causing the error:
+"std::vector<StandardMove> Game::legalMoves()
+{
+    // INITIALIZE VARIABLES
+
+    // INITIALIZE MOVE VECTOR
+
+    std::vector<StandardMove> moves;
+
+    // LOOP OVER EVERY SQUARE AND APPEND TO MOVE VECTOR
+
+    // FILTER OUT ILLEGAL MOVES AND RETURN MOVE VECTOR
+    moves.erase(std::remove_if(moves.begin(), moves.end(), [&](StandardMove m) { return !isLegal(m); }), moves.end());
+    return moves;
+}"
+Where could the memory corruption be happening?
+*/

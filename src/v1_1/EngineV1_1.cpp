@@ -18,6 +18,12 @@
 #include "chesshelpers.h"
 #include "precomputed_engine_data.h"
 
+typedef std::int_fast8_t int8;
+typedef std::uint_fast8_t uint8;
+typedef std::int_fast32_t int32;
+typedef std::uint_fast32_t uint32;
+typedef std::uint_fast64_t uint64;
+
 constexpr int32 MAX_EVAL = INT32_MAX;
 
 // TODO add some sort of protection for games with halfmove counter > 500
