@@ -8,6 +8,7 @@ Use a hybrid of pseudo legal and legal move generation
  - King moves are pseudo legal
  - Moves of pinned peices are pseudo legal
  - All other moves are guarenteed to be legal  
+
 In the future, I might implement bitboard representations of the board to speed up move generation  
 
 ### Search Algorithm
