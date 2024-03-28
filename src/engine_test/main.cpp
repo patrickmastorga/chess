@@ -2,7 +2,6 @@
 
 #include "perft.h"
 #include "EngineV1_1.h"
-//#include "EngineV1_2.h"
 #include "StandardMove.h"
 
 using namespace std;

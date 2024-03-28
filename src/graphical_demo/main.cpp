@@ -201,6 +201,8 @@ int main()
             //board.printZobrist();
             //engine.printZobrist();
 
+            std::cout << board.asPGN();
+
             // Check if computer move has ended game
             if (board.gameOver().has_value()) {
                 gameOver = board.gameOver();

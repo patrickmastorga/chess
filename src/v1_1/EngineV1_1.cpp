@@ -77,7 +77,6 @@ StandardMove EngineV1_1::computerMove(std::chrono::milliseconds thinkTime)
     std::chrono::milliseconds totalSearchTime(0);
 
     Move moveStack[1500];
-    uint64 totalNodesSearched = 0;
 
     std::cout << "SEARCH " << asFEN() << std::endl;
 
@@ -95,7 +94,7 @@ StandardMove EngineV1_1::computerMove(std::chrono::milliseconds thinkTime)
 
         std::cout << "depth " << (int)depth + 1;
 
-        uint64 nodesSearchedThisIteration = 0;
+        uint32 nodesSearchedBeforeThisIteration = nodesSearchedThisMove;
 
         int32 alpha = -MAX_EVAL;
 
@@ -113,26 +112,20 @@ StandardMove EngineV1_1::computerMove(std::chrono::milliseconds thinkTime)
                 break;
             }
 
-            uint32 nodesSearchedThisMove = 0;
-
             makeMove(move);
-            move.strengthGuess = -search_std(1, depth, moveStack, 0, -MAX_EVAL, -alpha, nodesSearchedThisMove);
+            move.strengthGuess = -search_std(1, depth, moveStack, 0, -MAX_EVAL, -alpha);
             unmakeMove(move);
 
             if (move.strengthGuess > alpha) {
                 alpha = move.strengthGuess;
             }
-
-            nodesSearchedThisIteration += nodesSearchedThisMove;
         }
-
-        totalNodesSearched += nodesSearchedThisIteration;
 
         // Sort moves in order by score
         std::stable_sort(enginePositionMoves.begin(), enginePositionMoves.end(), [](const Move& l, const Move& r) { return l.strengthGuess > r.strengthGuess; });
         std::cout << " bestmove " << enginePositionMoves[0].toString();
 
-        std::cout << " nodes " << nodesSearchedThisIteration;
+        std::cout << " nodes " << nodesSearchedThisMove - nodesSearchedBeforeThisIteration;
 
         auto end = std::chrono::high_resolution_clock::now();
         lastSearchDuration = end - start;
@@ -147,9 +140,10 @@ StandardMove EngineV1_1::computerMove(std::chrono::milliseconds thinkTime)
 
     // Return the best move
     Move bestMove = enginePositionMoves[0];
-    std::cout << "totalnodes " << totalNodesSearched;
+    std::cout << "totalnodes " << nodesSearchedThisMove;
     std::cout << " totaltime " << totalSearchTime.count() << "millis" << std::endl;
     std::cout << bestMove.toString() << std::endl;
+    resetSearchMembers();
     return StandardMove(bestMove.start(), bestMove.target(), bestMove.promotion());
 }
 
@@ -321,7 +315,6 @@ std::uint64_t EngineV1_1::perft(int depth, bool printOut = false) noexcept
 std::uint64_t EngineV1_1::search_perft(int depth) noexcept
 {
     Move moveStack[1500];
-    uint64 totalNodesSearched = 0;
 
     std::cout << "PERFT SEARCH " << asFEN();
     auto start = std::chrono::high_resolution_clock::now();
@@ -334,8 +327,6 @@ std::uint64_t EngineV1_1::search_perft(int depth) noexcept
 
     // Incrementally increase depth until time is up
     for (int d = 0; d < depth; ++d) {
-        uint64 nodesSearchedThisIteration = 0;
-
         int32 alpha = -MAX_EVAL;
 
         // Erase scores from last iteration (stable_sort will maintain order)
@@ -346,20 +337,15 @@ std::uint64_t EngineV1_1::search_perft(int depth) noexcept
         // Run search for each move
         for (Move& move : enginePositionMoves) {
 
-            uint32 nodesSearchedThisMove = 0;
-
             makeMove(move);
-            move.strengthGuess = -search_std(1, d, moveStack, 0, -MAX_EVAL, -alpha, nodesSearchedThisMove);
+            move.strengthGuess = -search_std(1, d, moveStack, 0, -MAX_EVAL, -alpha);
             unmakeMove(move);
 
             if (move.strengthGuess > alpha) {
                 alpha = move.strengthGuess;
             }
 
-            nodesSearchedThisIteration += nodesSearchedThisMove;
         }
-
-        totalNodesSearched += nodesSearchedThisIteration;
 
         // Sort moves in order by score
         std::stable_sort(enginePositionMoves.begin(), enginePositionMoves.end(), [](const Move& l, const Move& r) { return l.strengthGuess > r.strengthGuess; });
@@ -367,10 +353,13 @@ std::uint64_t EngineV1_1::search_perft(int depth) noexcept
 
     auto end = std::chrono::high_resolution_clock::now();
 
+    uint32 nodes = nodesSearchedThisMove;
+    resetSearchMembers();
+
     // Print the total nodes and time
-    std::cout << " nodes " << totalNodesSearched;
+    std::cout << " nodes " << nodes;
     std::cout << " time " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "millis" << std::endl;
-    return totalNodesSearched;
+    return nodes;
 }
 
 std::uint64_t EngineV1_1::search_perft(std::chrono::milliseconds thinkTime) noexcept
@@ -380,7 +369,6 @@ std::uint64_t EngineV1_1::search_perft(std::chrono::milliseconds thinkTime) noex
     std::chrono::nanoseconds lastSearchDuration(0);
 
     Move moveStack[1500];
-    uint64 totalNodesSearched = 0;
 
     std::cout << "PERFT SEARCH " << asFEN();
     auto start = std::chrono::high_resolution_clock::now();
@@ -397,8 +385,6 @@ std::uint64_t EngineV1_1::search_perft(std::chrono::milliseconds thinkTime) noex
         auto searchCutoff = endSearch - lastSearchDuration * 1.25;
         auto start = std::chrono::high_resolution_clock::now();
 
-        uint64 nodesSearchedThisIteration = 0;
-
         int32 alpha = -MAX_EVAL;
 
         // Erase scores from last iteration (stable_sort will maintain order)
@@ -412,20 +398,14 @@ std::uint64_t EngineV1_1::search_perft(std::chrono::milliseconds thinkTime) noex
                 break;
             }
 
-            uint32 nodesSearchedThisMove = 0;
-
             makeMove(move);
-            move.strengthGuess = -search_std(1, depth, moveStack, 0, -MAX_EVAL, -alpha, nodesSearchedThisMove);
+            move.strengthGuess = -search_std(1, depth, moveStack, 0, -MAX_EVAL, -alpha);
             unmakeMove(move);
 
             if (move.strengthGuess > alpha) {
                 alpha = move.strengthGuess;
             }
-
-            nodesSearchedThisIteration += nodesSearchedThisMove;
         }
-
-        totalNodesSearched += nodesSearchedThisIteration;
 
         // Sort moves in order by score
         std::stable_sort(enginePositionMoves.begin(), enginePositionMoves.end(), [](const Move& l, const Move& r) { return l.strengthGuess > r.strengthGuess; });
@@ -437,10 +417,13 @@ std::uint64_t EngineV1_1::search_perft(std::chrono::milliseconds thinkTime) noex
 
     auto end = std::chrono::high_resolution_clock::now();
 
+    uint32 nodes = nodesSearchedThisMove;
+    resetSearchMembers();
+
     // Print the total nodes and time
-    std::cout << " nodes " << totalNodesSearched;
+    std::cout << " nodes " << nodes;
     std::cout << " time " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "millis" << std::endl;
-    return totalNodesSearched;
+    return nodes;
 }
 
 void EngineV1_1::printZobrist()
@@ -628,6 +611,8 @@ void EngineV1_1::initializeFen(const std::string& fenString)
     material_stage_weight = 0;
     earlygamePositionalMaterialInbalance = 0;
     endgamePositionalMaterialInbalance = 0;
+
+    resetSearchMembers();
 
     for (uint8 i = 0; i < MAX_DEPTH + 50; ++i) {
         positionInfo[i] = 0;
@@ -1873,17 +1858,17 @@ void EngineV1_1::unmakeMove(EngineV1_1::Move& move)
     positionInfo[positionInfoIndex--] = 0;
 }
 
-bool EngineV1_1::isDraw() const
+inline bool EngineV1_1::isDraw() const
 {
     return isDrawByFiftyMoveRule() || isDrawByInsufficientMaterial() || isDrawByThreefoldRepitition();
 }
 
-uint8 EngineV1_1::halfMovesSincePawnMoveOrCapture() const noexcept
+inline uint8 EngineV1_1::halfMovesSincePawnMoveOrCapture() const noexcept
 {
     return static_cast<uint8>((positionInfo[positionInfoIndex] >> 20) & 0b111111);
 }
 
-uint8 EngineV1_1::eligibleEnpassantSquare() const noexcept
+inline uint8 EngineV1_1::eligibleEnpassantSquare() const noexcept
 {
     return static_cast<uint8>(positionInfo[positionInfoIndex] >> 26);
 }
@@ -2191,6 +2176,11 @@ bool EngineV1_1::castlingMoveIsLegal(Move& move) {
     return true;
 }
 
+void EngineV1_1::resetSearchMembers()
+{
+    nodesSearchedThisMove = 0;
+}
+
 //SEARCH/EVAL METHODS
 std::uint64_t EngineV1_1::perft_h(uint8 depth, Move* moveStack, uint32 startMoves)
 {
@@ -2213,15 +2203,15 @@ std::uint64_t EngineV1_1::perft_h(uint8 depth, Move* moveStack, uint32 startMove
     return nodes;
 }
 
-int32 EngineV1_1::search_std(uint8 plyFromRoot, uint8 depth, Move* moveStack, uint32 startMoves, int32 alpha, int32 beta, uint32& nodesSearched)
+int32 EngineV1_1::search_std(uint8 plyFromRoot, uint8 depth, Move* moveStack, uint32 startMoves, int32 alpha, int32 beta)
 {
-    ++nodesSearched;
+    ++nodesSearchedThisMove;
     // BASE CASES
     if (isDrawByFiftyMoveRule() || repititionOcurred() || isDrawByInsufficientMaterial()) {
         return 0;
     }
     if (depth == 0) {
-        return search_quiscence(moveStack, startMoves, alpha, beta, nodesSearched);
+        return search_quiscence(moveStack, startMoves, alpha, beta);
     }
 
     // GENERATE/ORDER MOVES
@@ -2232,14 +2222,13 @@ int32 EngineV1_1::search_std(uint8 plyFromRoot, uint8 depth, Move* moveStack, ui
     // COMPUTE EVALUATION
     int32 best_eval = -MAX_EVAL;
     //int32 originalAplha = alpha;
-    //uint32 nodesBeforeSearch = nodesSearched;
     bool zeroLegalMoves = true;
 
     for (Move& move : pseudoLegalMoves) {
         if (makeMove(move)) {
             zeroLegalMoves = false;
 
-            int32 eval = -search_std(plyFromRoot + 1, depth - 1, moveStack, endMoves, -beta, -alpha, nodesSearched);
+            int32 eval = -search_std(plyFromRoot + 1, depth - 1, moveStack, endMoves, -beta, -alpha);
 
             unmakeMove(move);
 
@@ -2265,9 +2254,9 @@ int32 EngineV1_1::search_std(uint8 plyFromRoot, uint8 depth, Move* moveStack, ui
     return best_eval; // PV node (exact value)
 }
 
-int32 EngineV1_1::search_quiscence(Move* moveStack, uint32 startMoves, int32 alpha, int32 beta, uint32& nodesSearched)
+int32 EngineV1_1::search_quiscence(Move* moveStack, uint32 startMoves, int32 alpha, int32 beta)
 {
-    ++nodesSearched;
+    ++nodesSearchedThisMove;
     // GENERATE QUISCENCE MOVES
     uint32 endMoves = startMoves;
     bool inCheck = generatePseudoLegalMoves(moveStack, endMoves, true);
@@ -2295,7 +2284,7 @@ int32 EngineV1_1::search_quiscence(Move* moveStack, uint32 startMoves, int32 alp
     for (Move& move : pseudoLegalMoves) {
         if (makeMove(move)) {
 
-            int32 eval = isDrawByInsufficientMaterial() ? 0 : -search_quiscence(moveStack, endMoves, -beta, -alpha, nodesSearched);
+            int32 eval = isDrawByInsufficientMaterial() ? 0 : -search_quiscence(moveStack, endMoves, -beta, -alpha);
 
             unmakeMove(move);
 
@@ -2386,14 +2375,14 @@ EngineV1_1::MoveOrderer::Iterator EngineV1_1::MoveOrderer::begin()
     return Iterator(moveStack + startMoves, endMoves - startMoves, 0);
 }
 
-EngineV1_1::MoveOrderer::Iterator EngineV1_1::MoveOrderer::end()
+inline EngineV1_1::MoveOrderer::Iterator EngineV1_1::MoveOrderer::end()
 {
     return Iterator(moveStack + startMoves, endMoves - startMoves, endMoves - startMoves);
 }
 
-EngineV1_1::MoveOrderer::Iterator::Iterator(Move* start, uint32 size, uint32 currentIndex) : start(start), size(size), idx(currentIndex) {}
+inline EngineV1_1::MoveOrderer::Iterator::Iterator(Move* start, uint32 size, uint32 currentIndex) : start(start), size(size), idx(currentIndex) {}
 
-EngineV1_1::Move& EngineV1_1::MoveOrderer::Iterator::operator*()
+inline EngineV1_1::Move& EngineV1_1::MoveOrderer::Iterator::operator*()
 {
     return start[idx];
 }
@@ -2416,7 +2405,7 @@ EngineV1_1::MoveOrderer::Iterator& EngineV1_1::MoveOrderer::Iterator::operator++
     return *this;
 }
 
-bool EngineV1_1::MoveOrderer::Iterator::operator!=(const Iterator& other) const
+inline bool EngineV1_1::MoveOrderer::Iterator::operator!=(const Iterator& other) const
 {
     return idx != other.idx;
 }

@@ -195,6 +195,9 @@ private:
     std::int_fast32_t earlygamePositionalMaterialInbalance;
     std::int_fast32_t endgamePositionalMaterialInbalance;
 
+    // Search data
+    std::uint_fast32_t nodesSearchedThisMove;
+
 
     // BOARD METHODS
     // Initialize engine members for position
@@ -223,7 +226,7 @@ private:
     void unmakeMove(Move& move);
 
     // returns true if the last move has put the game into a forced draw (threefold repitition / 50 move rule / insufficient material)
-    bool isDraw() const;
+    inline bool isDraw() const;
 
     // returns the number of moves since pawn move or capture
     inline std::uint_fast8_t halfMovesSincePawnMoveOrCapture() const noexcept;
@@ -254,15 +257,19 @@ private:
     bool castlingMoveIsLegal(Move& move);
 
 
-    //SEARCH/EVAL METHODS
+    // SEARCH/EVAL METHODS
+    
+    // Resets the search parameters
+    void resetSearchMembers();
+    
     // returns number of total positions a certain depth away
     std::uint64_t perft_h(std::uint_fast8_t depth, Move* moveStack, std::uint_fast32_t startMoves);
 
     // Standard minimax search
-    std::int_fast32_t search_std(std::uint_fast8_t plyFromRoot, std::uint_fast8_t depth, Move* moveStack, std::uint_fast32_t startMoves, std::int_fast32_t alpha, std::int_fast32_t beta, std::uint_fast32_t& nodesSearched);
+    std::int_fast32_t search_std(std::uint_fast8_t plyFromRoot, std::uint_fast8_t depth, Move* moveStack, std::uint_fast32_t startMoves, std::int_fast32_t alpha, std::int_fast32_t beta);
 
     // Quiscence search
-    std::int_fast32_t search_quiscence(Move* moveStack, std::uint_fast32_t startMoves, std::int_fast32_t alpha, std::int_fast32_t beta, std::uint_fast32_t& nodesSearched);
+    std::int_fast32_t search_quiscence(Move* moveStack, std::uint_fast32_t startMoves, std::int_fast32_t alpha, std::int_fast32_t beta);
 
     // Static evaluation function
     std::int_fast32_t evaluate();
@@ -302,7 +309,7 @@ private:
         // Retreives the move with the highest score
         Iterator begin();
 
-        Iterator end();
+        inline Iterator end();
 
     private:
         std::uint_fast32_t startMoves;

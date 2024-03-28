@@ -71,7 +71,7 @@ protected:
     // List of all moves in game in algebraic notation
     std::list<std::string> gameMovesInAlgebraicNotation;
 
-    // List of all moves in game in algebraic notation
+    // List of all moves in game
     std::list<StandardMove> gameMoves;
 
     // total half moves since game start (half move is one player taking a turn)
