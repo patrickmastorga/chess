@@ -4,14 +4,19 @@
 #define STANDARD_ENGINE_HEADER_FILE "EngineV1_1.h"
 #define STANDARD_ENGINE_CLASS_NAME EngineV1_1
 #define ENGINE_NAME "engine_v1.1"
+#define HUMAN_NAME "human"
 #define THINK_TIME 100ms
 #define BOARD_SIZE 960
+#define LOG_FILE_NAME "log.txt"
 //////////////////////////////////////////////////////////
 
 #include <SFML/Graphics.hpp>
 #include <SFML/Graphics/Font.hpp>
 #include <chrono>
 #include <optional>
+#include <string>
+#include <fstream>
+#include <map>
 
 #include STANDARD_ENGINE_HEADER_FILE
 #include "DrawableBoard.h"
@@ -64,13 +69,13 @@ static void drawTitle(sf::RenderTarget& target, bool whiteOnBottom, std::optiona
     }
 
     // White player
-    sf::Text left(whiteOnBottom ? "human" : ENGINE_NAME, font, TITLE_SIZE);
+    sf::Text left(whiteOnBottom ? HUMAN_NAME : ENGINE_NAME, font, TITLE_SIZE);
     left.setOrigin(left.getGlobalBounds().width, 0.0f);
     left.setFillColor(leftColor);
     left.setPosition(titlePos);
 
     // Black player
-    sf::Text right(!whiteOnBottom ? "human" : ENGINE_NAME, font, TITLE_SIZE);
+    sf::Text right(!whiteOnBottom ? HUMAN_NAME : ENGINE_NAME, font, TITLE_SIZE);
     right.setOrigin(-middle.getGlobalBounds().width, 0.0f);
     right.setFillColor(rightColor);
     right.setPosition(titlePos);
@@ -112,6 +117,18 @@ int main()
     DrawableBoard board(boardPosition, whiteOnBottom);
     STANDARD_ENGINE_CLASS_NAME engine;
 
+    std::ofstream game_log(LOG_FILE_NAME);
+
+    if (!game_log.is_open()) {
+        std::cout << "PoopIE\n";
+    }
+
+    std::map<std::string, std::string> headers;
+    headers["White"] = whiteOnBottom ? HUMAN_NAME : ENGINE_NAME;
+    headers["Black"] = whiteOnBottom ? ENGINE_NAME : HUMAN_NAME;
+    int gameNumber = 1;
+
+
     while (window.isOpen())
     {
         // Handle events
@@ -119,12 +136,26 @@ int main()
         while (window.pollEvent(event))
         {
             if (event.type == sf::Event::Closed) {
+                if (board.getLastMovePlayed().has_value() && !gameOver.has_value() && game_log.is_open()) {
+                    headers["Event"] = "Graphical Demo Game " + std::to_string(gameNumber++);
+                    headers["Termination"] = "Forfiet";
+                    game_log << board.asPGN(headers);
+                }
+                if (game_log.is_open()) {
+                    game_log.close();
+                }
                 window.close();
                 return 0;
             }
 
             if (event.type == sf::Event::KeyPressed) {
                 if (event.key.code == sf::Keyboard::Enter) {
+                    // Forfiet
+                    if (board.getLastMovePlayed().has_value() && !gameOver.has_value() && game_log.is_open()) {
+                        headers["Event"] = "Graphical Demo Game " + std::to_string(gameNumber++);
+                        headers["Termination"] = "Forfiet";
+                        game_log << board.asPGN(headers);
+                    }
                     // Reset game
                     board.reset(whiteOnBottom);
                     engine.loadStartingPosition();
@@ -133,6 +164,14 @@ int main()
                 }
 
                 if (event.key.code == sf::Keyboard::Tab) {
+                    // Forfiet
+                    if (board.getLastMovePlayed().has_value() && !gameOver.has_value() && game_log.is_open()) {
+                        headers["Event"] = "Graphical Demo Game " + std::to_string(gameNumber++);
+                        headers["Termination"] = "Forfiet";
+                        game_log << board.asPGN(headers);
+                        headers["White"] = whiteOnBottom ? HUMAN_NAME : ENGINE_NAME;
+                        headers["Black"] = whiteOnBottom ? ENGINE_NAME : HUMAN_NAME;
+                    }
                     // Reset game and switch sides
                     whiteOnBottom = !whiteOnBottom;
                     board.reset(whiteOnBottom);
@@ -186,6 +225,11 @@ int main()
             // COMPUTER TURN
             // Check if player move has ended game
             if (board.gameOver().has_value()) {
+                if (game_log.is_open()) {
+                    headers["Event"] = "Graphical Demo Game " + std::to_string(gameNumber++);
+                    headers["Termination"] = "Normal";
+                    game_log << board.asPGN(headers);
+                }
                 gameOver = board.gameOver();
                 continue;
             }
@@ -198,13 +242,13 @@ int main()
             board.inputMove(computerMove);
             engine.inputMove(computerMove);
 
-            //board.printZobrist();
-            //engine.printZobrist();
-
-            std::cout << board.asPGN();
-
             // Check if computer move has ended game
             if (board.gameOver().has_value()) {
+                if (game_log.is_open()) {
+                    headers["Event"] = "Graphical Demo Game " + std::to_string(gameNumber++);
+                    headers["Termination"] = "Normal";
+                    game_log << board.asPGN(headers);
+                }
                 gameOver = board.gameOver();
                 continue;
             }

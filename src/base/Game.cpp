@@ -268,25 +268,69 @@ std::string Game::asFEN() const noexcept
 
 std::string Game::asPGN(std::map<std::string, std::string> headers) noexcept
 {
-    if (headers.find("Event") == headers.end()) headers["Event"] = "??";
-    if (headers.find("Date") == headers.end()) headers["Date"] = getCurrentDate();
-    if (headers.find("White") == headers.end()) headers["White"] = "??";
-    if (headers.find("Black") == headers.end()) headers["Black"] = "??";
-    if (headers.find("Termination") == headers.end()) headers["Termination"] = gameOver().has_value() ? "Normal" : "Forfeit";
+    std::string pgn;
 
+    // Add default headers
+    // Event
+    if (headers.find("Event") == headers.end()) {
+        pgn += "[Event \"??\"]\n";
+    }
+    else {
+        pgn += "[Event \"" + headers["Event"] + "\"]\n";
+        headers.erase("Event");
+    }
+
+    // Date
+    if (headers.find("Date") == headers.end()) {
+        pgn += "[Date \"" + getCurrentDate() + "\"]\n";
+    }
+    else {
+        pgn += "[Date \"" + headers["Date"] + "\"]\n";
+        headers.erase("Date");
+    }
+
+    // White
+    if (headers.find("White") == headers.end()) {
+        pgn += "[White \"??\"]\n";
+    }
+    else {
+        pgn += "[White \"" + headers["White"] + "\"]\n";
+        headers.erase("White");
+    }
+
+    // Black
+    if (headers.find("Black") == headers.end()) {
+        pgn += "[Black \"??\"]\n";
+    }
+    else {
+        pgn += "[Black \"" + headers["Black"] + "\"]\n";
+        headers.erase("Black");
+    }
+
+    // Termination
+    if (headers.find("Termination") == headers.end()) {
+        std::string termination = gameOver().has_value() ? "Normal" : "Forfeit";
+        pgn += "[Termination \"" + termination + "\"]\n";
+    }
+    else {
+        pgn += "[Termination \"" + headers["Termination"] + "\"]\n";
+        headers.erase("Termination");
+    }
+
+    // Result
     std::string resultStr;
     if (headers.find("Result") == headers.end()) {
         int result = gameOver().has_value() ? gameOver().value() : -colorToMove();
         resultStr = (result == 1) ? "1-0" : (result == -1) ? "0-1" : "1/2-1/2";
-        headers["Result"] = resultStr;
+        pgn += "[Result \"" + resultStr + "\"]\n";
     }
     else {
         resultStr = headers["Result"];
+        pgn += "[Result \"" + resultStr + "\"]\n";
+        headers.erase("Result");
     }
 
-    std::string pgn;
-
-    // Add headers
+    // other headers
     for (const auto& header : headers) {
         pgn += "[" + header.first + " \"" + header.second + "\"]\n";
     }
