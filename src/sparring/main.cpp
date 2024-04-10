@@ -7,10 +7,12 @@
 #define ENGINE_2_HEADER_FILE "EngineV1_1.h"
 #define ENGINE_2_CLASS_NAME EngineV1_1
 #define ENGINE_2_NAME "engine_v1.1"
-#define THINK_TIME 200ms
+#define THINK_TIME 1000ms
 #define BOARD_SIZE 960
 #define LOG_FILE_NAME "log.txt"
 //////////////////////////////////////////////////////////
+
+#define TOTAL_MATCHES 1
 
 #include <SFML/Graphics.hpp>
 #include <SFML/Graphics/Font.hpp>
@@ -28,7 +30,7 @@
 #define TITLE_HEIGHT 40.0f
 const sf::Vector2f gameSize(960.0f, 960.0f + TITLE_HEIGHT);
 
-static void drawTitle(sf::RenderTarget& target, std::string white, std::string black) {
+static void drawTitle(sf::RenderTarget& target, std::string white, std::string black, int matchNumber) {
     static constexpr float DISTANCE_FROM_TOP = 3.0f;
     static constexpr unsigned int TITLE_SIZE = 26U;
 
@@ -61,13 +63,19 @@ static void drawTitle(sf::RenderTarget& target, std::string white, std::string b
 
     // Sparring text
     sf::Text title("SPARRING", font, TITLE_SIZE);
-    title.setPosition(DISTANCE_FROM_TOP, DISTANCE_FROM_TOP);
+    title.setPosition(2 * DISTANCE_FROM_TOP, DISTANCE_FROM_TOP);
+
+    // Counter
+    sf::Text counter(std::to_string(matchNumber) + "/" + std::to_string(TOTAL_MATCHES), font, TITLE_SIZE);
+    counter.setOrigin(counter.getGlobalBounds().width, 0.0f);
+    counter.setPosition(gameSize.x - 2 * DISTANCE_FROM_TOP, DISTANCE_FROM_TOP);
 
     target.draw(titleBar);
     target.draw(middle);
     target.draw(left);
     target.draw(right);
     target.draw(title);
+    target.draw(counter);
 }
 
 int main()
@@ -94,10 +102,12 @@ int main()
     std::map<std::string, std::string> headers;
 
     // Loop
+    int matchNumber = 0;
     std::ifstream positions("sparring_positions.txt");
 
     std::string fen;
     while (std::getline(positions, fen)) {
+        matchNumber++;
         using namespace std::chrono_literals;
 
         // Play game
@@ -122,7 +132,7 @@ int main()
 
             // Update screen
             window.setView(gameView);
-            drawTitle(window, ENGINE_1_NAME, ENGINE_2_NAME);
+            drawTitle(window, ENGINE_1_NAME, ENGINE_2_NAME, matchNumber);
             window.draw(board);
             window.display();
 
@@ -138,7 +148,7 @@ int main()
 
             // Update screen
             window.setView(gameView);
-            drawTitle(window, ENGINE_1_NAME, ENGINE_2_NAME);
+            drawTitle(window, ENGINE_1_NAME, ENGINE_2_NAME, matchNumber);
             window.draw(board);
             window.display();
 
@@ -179,7 +189,7 @@ int main()
 
             // Update screen
             window.setView(gameView);
-            drawTitle(window, ENGINE_2_NAME, ENGINE_1_NAME);
+            drawTitle(window, ENGINE_2_NAME, ENGINE_1_NAME, matchNumber);
             window.draw(board);
             window.display();
 
@@ -195,7 +205,7 @@ int main()
 
             // Update screen
             window.setView(gameView);
-            drawTitle(window, ENGINE_2_NAME, ENGINE_1_NAME);
+            drawTitle(window, ENGINE_2_NAME, ENGINE_1_NAME, matchNumber);
             window.draw(board);
             window.display();
 

@@ -10,9 +10,10 @@ using namespace std::chrono_literals;
 
 int main()
 {
-	EngineV1_1 engine("Q7/8/8/5K2/8/7P/2Q5/5k2 w - - 3 68");
+	EngineV1_1 engine("r5k1/5pp1/4p2p/1P1b4/r7/2Q5/2R3PP/6K1 b - - 1 35");
 
-	cout << engine.computerMove(100ms);
+	engine.inputMove(engine.computerMove(150ms));
+	engine.inputMove(engine.computerMove(150ms));
 	
 	return 0;
 }

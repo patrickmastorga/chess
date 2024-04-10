@@ -12,6 +12,7 @@
 #include <sstream>
 #include <cctype>
 #include <chrono>
+#include <cmath>
 
 #include <random>
 
@@ -28,6 +29,9 @@ typedef std::uint_fast64_t uint64;
 
 constexpr int32 MAX_EVAL = INT32_MAX;
 constexpr int32 MATE_CUTOFF = MAX_EVAL - MAX_DEPTH;
+
+// Prevents computer from always choosing threefold repitition
+constexpr int32 REPITIION_EVALUATION = -50;
 
 // TODO add some sort of protection for games with halfmove counter > 500
 
@@ -74,6 +78,11 @@ StandardMove EngineV1_1::computerMove(std::chrono::milliseconds thinkTime)
         throw std::runtime_error("Game is over, cannot get computer move!");
     }
 
+    if (enginePositionMoves.size() == 1) {
+        std::cout << "forced " << enginePositionMoves[0].toString() << std::endl;
+        return StandardMove(enginePositionMoves[0].start(), enginePositionMoves[0].target(), enginePositionMoves[0].promotion());
+    }
+
     // Time management variables
     auto endSearch = std::chrono::high_resolution_clock::now() + thinkTime;
     std::chrono::nanoseconds lastSearchDuration(0);
@@ -93,12 +102,13 @@ StandardMove EngineV1_1::computerMove(std::chrono::milliseconds thinkTime)
     int32 lastEval;
 
     // Incrementally increase depth until time is up
-    for (uint8 depth = 0;; ++depth) {
+    uint8 depth = 0;
+    for (;; ++depth) {
         // Calculate the cutoff time to halt search based on last search
         auto searchCutoff = endSearch - lastSearchDuration * 1.25;
         auto start = std::chrono::high_resolution_clock::now();
 
-        std::cout << "depth " << (int)depth + 1;
+//        std::cout << "depth " << (int)depth + 1;
 
         uint32 nodesSearchedBeforeThisIteration = nodesSearchedThisMove;
 
@@ -117,7 +127,7 @@ StandardMove EngineV1_1::computerMove(std::chrono::milliseconds thinkTime)
         // Run search for each move
         for (Move& move : enginePositionMoves) {
             if (std::chrono::high_resolution_clock::now() > searchCutoff) {
-                std::cout << " timeout";
+//                std::cout << " timeout";
                 break;
             }
 
@@ -132,16 +142,17 @@ StandardMove EngineV1_1::computerMove(std::chrono::milliseconds thinkTime)
 
         // Sort moves in order by score
         std::stable_sort(enginePositionMoves.begin(), enginePositionMoves.end(), [](const Move& l, const Move& r) { return l.strengthGuess > r.strengthGuess; });
-        std::cout << " bestmove " << enginePositionMoves[0].toString();
+//        std::cout << " bestmove " << enginePositionMoves[0].toString();
 
-        std::cout << " nodes " << nodesSearchedThisMove - nodesSearchedBeforeThisIteration;
+//        std::cout << " nodes " << nodesSearchedThisMove - nodesSearchedBeforeThisIteration;
 
         auto end = std::chrono::high_resolution_clock::now();
         lastSearchDuration = end - start;
         totalSearchTime += std::chrono::duration_cast<std::chrono::milliseconds>(lastSearchDuration);
-        std::cout << " time " << std::chrono::duration_cast<std::chrono::milliseconds>(lastSearchDuration).count() << "millis" << std::endl;
+//        std::cout << " time " << std::chrono::duration_cast<std::chrono::milliseconds>(lastSearchDuration).count() << "millis" << std::endl;
 
-        if (enginePositionMoves[0].strengthGuess >= MATE_CUTOFF) {
+        // Fastest mate is already found
+        if (std::abs(enginePositionMoves[0].strengthGuess) >= MATE_CUTOFF) {
             break;
         }
 
@@ -155,11 +166,12 @@ StandardMove EngineV1_1::computerMove(std::chrono::milliseconds thinkTime)
     Move bestMove = enginePositionMoves[0];
 
     int32 eval = bestMove.strengthGuess == -MAX_EVAL ? lastEval : bestMove.strengthGuess;
-    std::string evalString = eval > MATE_CUTOFF ? "#" + std::to_string(MAX_EVAL - eval) : std::to_string(colorToMove() * eval);
+    std::string evalString = std::abs(eval) > MATE_CUTOFF ? "#" + std::to_string(MAX_EVAL - std::abs(eval)) : std::to_string(colorToMove() * eval);
 
-    std::cout << "totalnodes " << nodesSearchedThisMove;
-    std::cout << " totaltime " << totalSearchTime.count() << "millis";
-    std::cout << " eval " << evalString << std::endl;
+    std::cout << std::setw(8) << std::left << ("depth " + std::to_string(depth + 1));
+    std::cout << std::setw(14) << std::left << (" nodes " + std::to_string(nodesSearchedThisMove));
+    std::cout << std::setw(12) << std::left << (" time " + std::to_string(totalSearchTime.count()) + "ms");
+    std::cout << std::setw(11) << std::left << (" eval " + evalString) << std::endl;
     std::cout << bestMove.toString() << std::endl;
     resetSearchMembers();
     return StandardMove(bestMove.start(), bestMove.target(), bestMove.promotion());
@@ -2220,8 +2232,12 @@ int32 EngineV1_1::search_std(uint8 plyFromRoot, uint8 depth, Move* moveStack, ui
 {
     ++nodesSearchedThisMove;
     // BASE CASES
-    if (isDrawByFiftyMoveRule() || repititionOcurred() || isDrawByInsufficientMaterial()) {
+    //if (isDrawByFiftyMoveRule() || repititionOcurred() || isDrawByInsufficientMaterial()) {
+    if (isDrawByFiftyMoveRule() || isDrawByInsufficientMaterial()) {
         return 0;
+    }
+    if (repititionOcurred()) {
+        return -REPITIION_EVALUATION;
     }
     if (depth == 0) {
         return search_quiscence(plyFromRoot, moveStack, startMoves, alpha, beta);
