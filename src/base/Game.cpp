@@ -1559,7 +1559,7 @@ bool Game::isDrawByThreefoldRepitition() const noexcept
     uint8 index = positionInfoIndex - 2;
     uint8 numPossibleRepitions = halfMovesSincePawnMoveOrCapture() / 2 - 1;
 
-    uint32 currentHash = static_cast<uint32>(zobrist << 44);
+    uint32 currentHash = static_cast<uint32>(zobrist >> 44);
     bool repititionFound = false;
 
     for (uint8 i = 0; i < numPossibleRepitions; ++i) {

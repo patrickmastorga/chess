@@ -119,10 +119,6 @@ int main()
 
     std::ofstream game_log(LOG_FILE_NAME);
 
-    if (!game_log.is_open()) {
-        std::cout << "PoopIE\n";
-    }
-
     std::map<std::string, std::string> headers;
     headers["White"] = whiteOnBottom ? HUMAN_NAME : ENGINE_NAME;
     headers["Black"] = whiteOnBottom ? ENGINE_NAME : HUMAN_NAME;

@@ -51,7 +51,6 @@ public:
 
     std::uint64_t search_perft(std::chrono::milliseconds thinkTime) noexcept override;
 
-    void printZobrist();
 private:
     // DEFINITIONS
     static constexpr std::uint_fast8_t WHITE = 0b0000;
@@ -269,7 +268,7 @@ private:
     std::int_fast32_t search_std(std::uint_fast8_t plyFromRoot, std::uint_fast8_t depth, Move* moveStack, std::uint_fast32_t startMoves, std::int_fast32_t alpha, std::int_fast32_t beta);
 
     // Quiscence search
-    std::int_fast32_t search_quiscence(Move* moveStack, std::uint_fast32_t startMoves, std::int_fast32_t alpha, std::int_fast32_t beta);
+    std::int_fast32_t search_quiscence(std::uint_fast8_t plyFromRoot, Move* moveStack, std::uint_fast32_t startMoves, std::int_fast32_t alpha, std::int_fast32_t beta);
 
     // Static evaluation function
     std::int_fast32_t evaluate();

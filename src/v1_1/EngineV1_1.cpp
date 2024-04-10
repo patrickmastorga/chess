@@ -13,6 +13,8 @@
 #include <cctype>
 #include <chrono>
 
+#include <random>
+
 #include "StandardMove.h"
 #include "precomputed_chess_data.h"
 #include "chesshelpers.h"
@@ -25,6 +27,7 @@ typedef std::uint_fast32_t uint32;
 typedef std::uint_fast64_t uint64;
 
 constexpr int32 MAX_EVAL = INT32_MAX;
+constexpr int32 MATE_CUTOFF = MAX_EVAL - MAX_DEPTH;
 
 // TODO add some sort of protection for games with halfmove counter > 500
 
@@ -86,6 +89,9 @@ StandardMove EngineV1_1::computerMove(std::chrono::milliseconds thinkTime)
     }
     std::sort(enginePositionMoves.begin(), enginePositionMoves.end(), [](Move& l, Move& r) { return l.strengthGuess > r.strengthGuess; });
 
+    // Used for saving last iteration's eval
+    int32 lastEval;
+
     // Incrementally increase depth until time is up
     for (uint8 depth = 0;; ++depth) {
         // Calculate the cutoff time to halt search based on last search
@@ -99,6 +105,9 @@ StandardMove EngineV1_1::computerMove(std::chrono::milliseconds thinkTime)
         int32 alpha = -MAX_EVAL;
 
         int index = 0;
+
+        // Save last evaluation in case of time cutoff
+        lastEval = enginePositionMoves[0].strengthGuess;
 
         // Erase scores from last iteration (stable_sort will maintain order)
         for (Move& move : enginePositionMoves) {
@@ -132,6 +141,10 @@ StandardMove EngineV1_1::computerMove(std::chrono::milliseconds thinkTime)
         totalSearchTime += std::chrono::duration_cast<std::chrono::milliseconds>(lastSearchDuration);
         std::cout << " time " << std::chrono::duration_cast<std::chrono::milliseconds>(lastSearchDuration).count() << "millis" << std::endl;
 
+        if (enginePositionMoves[0].strengthGuess >= MATE_CUTOFF) {
+            break;
+        }
+
         if (std::chrono::high_resolution_clock::now() > searchCutoff) {
             break;
         }
@@ -140,8 +153,13 @@ StandardMove EngineV1_1::computerMove(std::chrono::milliseconds thinkTime)
 
     // Return the best move
     Move bestMove = enginePositionMoves[0];
+
+    int32 eval = bestMove.strengthGuess == -MAX_EVAL ? lastEval : bestMove.strengthGuess;
+    std::string evalString = eval > MATE_CUTOFF ? "#" + std::to_string(MAX_EVAL - eval) : std::to_string(colorToMove() * eval);
+
     std::cout << "totalnodes " << nodesSearchedThisMove;
-    std::cout << " totaltime " << totalSearchTime.count() << "millis" << std::endl;
+    std::cout << " totaltime " << totalSearchTime.count() << "millis";
+    std::cout << " eval " << evalString << std::endl;
     std::cout << bestMove.toString() << std::endl;
     resetSearchMembers();
     return StandardMove(bestMove.start(), bestMove.target(), bestMove.promotion());
@@ -426,10 +444,6 @@ std::uint64_t EngineV1_1::search_perft(std::chrono::milliseconds thinkTime) noex
     return nodes;
 }
 
-void EngineV1_1::printZobrist()
-{
-    std::cout << zobrist << std::endl;
-}
 
 // MOVE STRUCT
 // PUBLIC METHODS
@@ -811,7 +825,6 @@ void EngineV1_1::initializeFen(const std::string& fenString)
 
     enginePositionMoves = legalMoves();
 }
-
 
 bool EngineV1_1::generatePseudoLegalMoves(Move* stack, uint32& idx, bool generateOnlyCaptures) noexcept
 {
@@ -1882,7 +1895,7 @@ bool EngineV1_1::isDrawByThreefoldRepitition() const noexcept
     uint8 index = positionInfoIndex - 2;
     uint8 numPossibleRepitions = halfMovesSincePawnMoveOrCapture() / 2 - 1;
 
-    uint32 currentHash = static_cast<uint32>(zobrist << 44);
+    uint32 currentHash = static_cast<uint32>(zobrist >> 44);
     bool repititionFound = false;
 
     for (uint8 i = 0; i < numPossibleRepitions; ++i) {
@@ -1922,7 +1935,7 @@ bool EngineV1_1::repititionOcurred() const noexcept
     uint8 index = positionInfoIndex - 2;
     uint8 numPossibleRepitions = halfMovesSincePawnMoveOrCapture() / 2 - 1;
 
-    uint32 currentHash = static_cast<uint32>(zobrist << 44);
+    uint32 currentHash = static_cast<uint32>(zobrist >> 44);
 
     for (uint8 i = 0; i < numPossibleRepitions; ++i) {
         index -= 2;
@@ -2211,12 +2224,12 @@ int32 EngineV1_1::search_std(uint8 plyFromRoot, uint8 depth, Move* moveStack, ui
         return 0;
     }
     if (depth == 0) {
-        return search_quiscence(moveStack, startMoves, alpha, beta);
+        return search_quiscence(plyFromRoot, moveStack, startMoves, alpha, beta);
     }
 
     // GENERATE/ORDER MOVES
     uint32 endMoves = startMoves;
-    generatePseudoLegalMoves(moveStack, endMoves);
+    bool inCheck = generatePseudoLegalMoves(moveStack, endMoves);
     MoveOrderer pseudoLegalMoves(this, moveStack, startMoves, endMoves);
 
     // COMPUTE EVALUATION
@@ -2246,7 +2259,7 @@ int32 EngineV1_1::search_std(uint8 plyFromRoot, uint8 depth, Move* moveStack, ui
     }
 
     if (zeroLegalMoves) {
-        return inCheck() ? -MAX_EVAL + plyFromRoot : 0;
+        return inCheck ? -(MAX_EVAL - plyFromRoot) : 0;
     }
 
     //if (alpha == originalAplha) All Node (upper bound)
@@ -2254,15 +2267,23 @@ int32 EngineV1_1::search_std(uint8 plyFromRoot, uint8 depth, Move* moveStack, ui
     return best_eval; // PV node (exact value)
 }
 
-int32 EngineV1_1::search_quiscence(Move* moveStack, uint32 startMoves, int32 alpha, int32 beta)
+int32 EngineV1_1::search_quiscence(uint8 plyFromRoot, Move* moveStack, uint32 startMoves, int32 alpha, int32 beta)
 {
     ++nodesSearchedThisMove;
+
+    // CHECK MAX DEPTH
+    if (plyFromRoot > MAX_DEPTH) {
+        return evaluate() * colorToMove();
+    }
+
     // GENERATE QUISCENCE MOVES
     uint32 endMoves = startMoves;
     bool inCheck = generatePseudoLegalMoves(moveStack, endMoves, true);
 
     // STATIC EVALUATION
     int32 best_eval;
+    bool zeroLegalMoves = true;
+
     if (inCheck) {
         best_eval = -MAX_EVAL;
     }
@@ -2283,8 +2304,9 @@ int32 EngineV1_1::search_quiscence(Move* moveStack, uint32 startMoves, int32 alp
     // SEARCH
     for (Move& move : pseudoLegalMoves) {
         if (makeMove(move)) {
+            zeroLegalMoves = false;
 
-            int32 eval = isDrawByInsufficientMaterial() ? 0 : -search_quiscence(moveStack, endMoves, -beta, -alpha);
+            int32 eval = isDrawByInsufficientMaterial() ? 0 : -search_quiscence(plyFromRoot + 1, moveStack, endMoves, -beta, -alpha);
 
             unmakeMove(move);
 
@@ -2299,6 +2321,10 @@ int32 EngineV1_1::search_quiscence(Move* moveStack, uint32 startMoves, int32 alp
                 }
             }
         }
+    }
+
+    if (inCheck && zeroLegalMoves) {
+        return -(MAX_EVAL - plyFromRoot);
     }
 
     return best_eval;
