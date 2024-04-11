@@ -18,12 +18,12 @@
     <ClInclude Include="EngineV1_1.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="precomputed_engine_data.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EngineV1_1.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="precomputed_engine_data.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

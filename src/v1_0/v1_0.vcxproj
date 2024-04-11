@@ -20,10 +20,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EngineV1_0.h" />
-    <ClInclude Include="precomputed_engine_data.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EngineV1_0.cpp" />
+    <ClCompile Include="precomputed_engine_data.cpp" />
     <ClCompile Include="precomputing\peice_value_generation.cpp" />
   </ItemGroup>
   <ItemGroup>

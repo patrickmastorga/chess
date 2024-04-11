@@ -9,16 +9,9 @@
 #include <unordered_set>
 #include <string>
 
-constexpr int MAX_GAME_LENGTH = 500;
-constexpr int MAX_DEPTH = 32;
-constexpr int MOVE_STACK_SIZE = 1500;
-/*
-typedef std::int_fast8_t std::int_fast8_t;
-typedef std::uint_fast8_t std::uint_fast8_t;
-typedef std::int_fast32_t std::int_fast32_t;
-typedef std::uint_fast32_t std::uint_fast32_t;
-typedef std::uint_fast64_t std::uint_fast64_t;
-*/
+#define MAX_GAME_LENGTH 500
+#define MAX_DEPTH 32
+#define MOVE_STACK_SIZE 1500
 
 class EngineV1_1 : public PerftTestableEngine
 {
@@ -198,6 +191,25 @@ private:
     std::uint_fast32_t nodesSearchedThisMove;
 
 
+    // PRECOMPUTED DATA
+
+    static const std::int_fast16_t PEICE_VALUES[15];
+
+    /**
+     * Value of every peice [color][peice] at every index [0, 63] -> [a1, h8]
+     * Used for evaluating a position
+     */
+    static const std::int_fast16_t EARLYGAME_PEICE_VALUE[15][64];
+
+    /**
+     * Value of every peice [color][peice] at every index [0, 63] -> [a1, h8]
+     * Used for evaluating a position
+     */
+    static const std::int_fast16_t ENDGAME_PEICE_VALUE[15][64];
+
+    static const std::uint_fast8_t PEICE_STAGE_WEIGHTS[15];
+
+
     // BOARD METHODS
     // Initialize engine members for position
     void initializeFen(const std::string& fenString);
@@ -257,10 +269,10 @@ private:
 
 
     // SEARCH/EVAL METHODS
-    
+
     // Resets the search parameters
     void resetSearchMembers();
-    
+
     // returns number of total positions a certain depth away
     std::uint64_t perft_h(std::uint_fast8_t depth, Move* moveStack, std::uint_fast32_t startMoves);
 

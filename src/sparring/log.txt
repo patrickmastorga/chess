@@ -1,9 +1,18 @@
 [Event "Sparring Game FEN: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"]
 [Date "2024.04.10"]
 [White "engine_v1.1"]
-[Black "engine_v1.1"]
+[Black "engine_v1.2"]
 [Termination "Normal"]
-[Result "1-0"]
+[Result "0-1"]
 
-1. e4 Nc6 2. d4 d5 3. exd5 Qxd5 4. Nf3 Bf5 5. Nc3 Qa5 6. Bb5 Nf6 7. Ne5 a6 8. Nc4 Qb4 9. a3 axb5 10. axb4 Rxa1 11. Nxb5 e6 12. Nxc7+ Kd8 13. b5 Nb4 14. O-O Bxc2 15. Qe1 Bd3 16. Ne5 Bxf1 17. Nxf7+ Kc8 18. Nxh8 Nd3 19. Qxe6+ Kb8 20. Qb6 Rxc1 21. Na6+ Ka8 22. Nc7+ Kb8 23. Na6+ Ka8 24. Qd8+ Ka7 25. Qb8+ Kb6 26. Qd8+ Kxb5 27. h3 Bxg2+ 28. Kxg2 Nf4+ 29. Kf3 Ne6 30. Qa8 bxa6 31. Qb8+ Ka4 32. Qb6 Nc7 33. Nf7 Bb4 34. Ne5 Nfd5 35. Qb8 Rd1 36. Qg8 Rxd4 37. Qxh7 Ne6 38. Qg6 Rf4+ 39. Ke2 Rf6 40. Qc2+ Ka5 41. Kd1 Nc5 42. Nc4+ Kb5 43. Ne5 Kb6 44. Qc4 Kc7 45. Qd4 a5 46. Ng4 Re6 47. Qxg7+ Re7 48. Qg5 Kd6 49. Ne3 Nxe3+ 50. fxe3 Ne4 51. Qf5 Bc5 52. Kc2 Bxe3 53. Qxa5 Bc5 54. Qb5 Rc7 55. Kd3 Nf2+ 56. Kd2 Rc8 57. b4 Bd4 58. Qa5 Rc3 59. Qd8+ Ke5 60. Qe8+ Kf4 61. Qf8+ Kg5 62. Qg8+ Kf5 63. Qf7+ Ke4 64. Qb7+ Kf4 65. Qb8+ Kf3 66. Qf8+ Kg2 67. h4 Ne4+ 68. Kd1 Be3 69. Qf7 Ng3 70. Qa2+ Kg1 71. Qa1 Rc1+ 72. Qxc1 Bxc1 73. Kxc1 Kg2 74. b5 Nf5 75. h5 Kf3 76. b6 Kf4 77. b7 Kg5 78. b8=Q Kxh5 79. Kc2 Kg5 80. Qe5 Kg4 81. Kd3 Ng3 82. Qf6 Nf5 83. Ke4 Ng3+ 84. Ke5 Kh3 85. Qg5 Kh2 86. Qg4 Nf1 87. Qf3 Kg1 88. Kd4 Nd2 89. Qe3+ Kg2 90. Qxd2+ Kf3 91. Qg5 Kf2 92. Qg4 Ke1 93. Ke3 Kf1 94. Qg5 Ke1 95. Qg1# 1-0
+1. Nxc3 Nxc6 2. Nxf3 Nxf6 3. xe4 xd5 4. exd5 Nxd5 5. Nxd5 Qxd5 6. xd4 Bxg4 7. Bxe2 xe5 8. dxe5 Bxf3 9. Bxf3 Qxe5+ 10. Kxf1 Bxd6 11. Bxc6+ bxc6 12. Qxf3 Qxb5+ 13. Kxg1 O-O 14. Qxc3 Bxe5 15. xa4 Qxd5 16. Qxd3 Rfxb8 17. Qxd5 cxd5 18. Rxb1 Rxb4 19. xb3 xd4 20. Bxb2 Rxd8 21. Rxd1 Rxb6 22. Rxe1 Bxf6 23. xa5 Rxb5 24. xa6 Rxb6 25. Rxa1 Rxc6 26. Rxc1 Rxa6 27. Rxe1 Rxa2 28. Rxb1 Rxe8 29. Kxf1 Rxe6 30. xg4 Rxc6 31. Rxe1 xg5 32. Bxd4 Bxd4 33. Rxd1 Bxb6 34. Rxd8+ Kxg7 35. Rxd5 Kxg6 36. xc4 Rxf2+ 37. Kxe1 Rxb2 38. Rxd3 Rxb1+ 39. Rxd1 Rxb3 40. xc5 Rxc5 41. Kxe2 Kxg7 42. xh3 Rxe5+ 43. Kxd2 Rexe3 44. xh4 gxh4 45. Rxh4 Rxb2+ 46. Kxc1 Rexe2 47. Rxd7 Rxb4 48. Rxd5 xh6 49. Rdxh5 Rxe6 50. Kxc2 Rxg6 51. Kxc3 Rxe4 52. Rxf5 Rxd4 53. Rxf3 xa6 54. Rxf1 Rdxg4 55. Rxg4 Rxg4 56. Kxd3 Rxd4+ 57. Kxc3 Rxd8 58. Kxb3 Kxg6 59. Rxa1 xa5 60. Rxf1 Rxd6 61. Kxc4 Rxf6 62. Rxe1 Rxf4+ 63. Kxd5 Kxf6 64. Rxd1 Kxf5 65. Rxd2 xa4 66. Rxd1 xa3 67. Rxd2 Rxe4 68. Kxc6 Kxe6 69. Kxb5 Bxe3 70. Rxa2 Bxc1 71. Rxa1 Bxb2 72. Rxa2 Kxd6 73. Kxa6 Rxc4 74. Kxb5 Kxd5 75. Kxa6 Rxd4 76. Kxb5 Kxd6 77. Kxa6 Rxe4 78. Kxb5 Rxf4 79. Kxa6 Kxd5 80. Kxb5 Rxe4 81. Kxa6 Kxc4 82. Kxb7 Kxb3 83. Rxa3+ Bxa3 84. Kxc7 Kxc4 85. Kxc6 Bxc5 86. Kxc7 Kxd5 87. Kxb7 Rxe7+ 88. Kxc8 Bxb6 89. Kxb8 Kxc6 90. Kxc8 Rxe8# 0-1
+
+[Event "Sparring Game FEN: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"]
+[Date "2024.04.10"]
+[White "engine_v1.1"]
+[Black "engine_v1.2"]
+[Termination "Normal"]
+[Result "0-1"]
+
+1. Nxc3 Nxc6 2. Nxf3 Nxf6 3. xe4 xd5 4. xe5 xd4 5. exf6 dxc3 6. fxg7 cxd2+ 7. Qxd2 Bxg7 8. Qxd8+ Kxd8 9. Nxg5 Bxe6 10. Bxd3 xh6 11. Nxe6+ fxe6 12. O-O xe5 13. Bxe3 xe6 14. Bxe4 Kxe7 15. Raxd1 Rhxe8 16. Rfxe1 xa6 17. xf4 exf4 18. Bxc6 bxc6 19. Bxf4 xc5 20. Kxf2 Bxb2 21. Bxc7 Bxc3 22. Bxd6+ Kxf7 23. Rxf1 Bxd4+ 24. Kxe2+ Kxg7 25. Kxd3 xe5 26. Kxc4 Raxc8 27. xc3 Bxe3 28. Rfxe1 Bxf4 29. xg3 Bxg5 30. Rxe5 Rxe5 31. Bxe5+ Kxf7 32. Rxd5 Kxe6 33. Bxd6 Rxd8 34. Rxg5 hxg5 35. Bxc5 Rxd2 36. xh3 Rxa2 37. Bxe3 xg4 38. hxg4 Rxa4+ 39. Kxd3 Rxg4 40. Bxf4 Kxd5 41. xc4+ Kxc5 42. Bxe3+ Kxc6 43. Bxf4 Rxg8 44. Bxe5 Kxc5 45. Bxd4+ Kxd6 46. Bxf2 Kxe5 47. Bxd4+ Kxf5 48. Bxf2 Kxe6 49. xc5 Kxd5 50. Kxd2 Kxe4 51. Kxe2 Rxb8 52. Kxf1 Kxf3 53. Bxe1 Rxb1 54. xg4 Rxc1 55. xg5 Rxc5 56. Bxd2 Rxc8 57. Kxe1 Rxc7 58. Kxd1 Rxc6 59. Bxc1 Kxe4 60. Bxd2 Kxd3 61. Bxf4 Rxc4 62. Bxd2 Rxh4 63. Bxe1 Rxh1 64. xg6 Rxg1 65. xg7 Rxg7 66. Bxf2 Rxg8 67. Kxe1 Rxg6 68. Kxf1 Rxg5 69. Bxg1 Kxe4 70. Bxf2 Rxb5 71. Kxg2 Rxb3 72. Bxh4 Rxc3 73. Kxf2 Rxc2+ 74. Kxg3 Rxc6 75. Bxg5 Rxg6 76. Kxg4 Rxg8 77. Kxh4 Kxf5 78. Bxe7 Rxg2 79. Kxh3 Rxg6 80. Kxh2 Kxe4 81. Bxb4 Rxb6 82. Bxc5 Rxb3 83. Kxg2 Rxc3 84. Bxe7 Rxc7 85. Bxf6 Kxf4 86. Kxh3 Rxc2 87. Bxe7 Rxd2 88. Bxb4 Rxd5 89. Kxg2 xa5 90. Bxc3 xa4 91. Bxb4 Kxe3 92. Kxf1 Kxf3 93. Kxg1 Rxd3 94. Bxe7 xa3 95. Bxh4 xa2 96. Bxf6 Rxd1+ 97. Kxh2 xa1=Q 98. Bxa1 Rxa1 99. Kxh3 Rxh1# 0-1
 

@@ -1,19 +1,24 @@
 #pragma once
 #include "StandardEngine.h"
+#include "PerftTestableEngine.h"
 #include "StandardMove.h"
 
-typedef std::int_fast16_t int16;
-typedef std::int_fast8_t int8;
-typedef std::int_fast8_t uint8;
-typedef std::uint_fast32_t uint32;
-typedef std::uint_fast64_t uint64;
+#include <cstdint>
+#include <optional>
+#include <vector>
+#include <unordered_set>
+#include <string>
 
-class EngineV1_0 : public StandardEngine
+#define MAX_GAME_LENGTH 500
+#define MAX_DEPTH 32
+#define MOVE_STACK_SIZE 1500
+
+class EngineV1_2 : public PerftTestableEngine
 {
 public:
-    EngineV1_0(std::string& fenString);
+    EngineV1_2(const std::string& fenString);
 
-    EngineV1_0();
+    EngineV1_2();
 
     void loadStartingPosition() override;
 
@@ -33,18 +38,22 @@ public:
 
     std::string asFEN() const noexcept override;
 
-    std::uint64_t perft(int depth, bool printOut) noexcept;
+    std::uint64_t perft(int depth, bool printOut) noexcept override;
+
+    std::uint64_t search_perft(int depth) noexcept override;
+
+    std::uint64_t search_perft(std::chrono::milliseconds thinkTime) noexcept override;
 
 private:
     // DEFINITIONS
-    static constexpr int16 WHITE = 0b0000;
-    static constexpr int16 BLACK = 0b1000;
-    static constexpr int16 PAWN = 0b001;
-    static constexpr int16 KNIGHT = 0b010;
-    static constexpr int16 BISHOP = 0b011;
-    static constexpr int16 ROOK = 0b100;
-    static constexpr int16 QUEEN = 0b101;
-    static constexpr int16 KING = 0b110;
+    static constexpr std::uint_fast8_t WHITE = 0b0000;
+    static constexpr std::uint_fast8_t BLACK = 0b1000;
+    static constexpr std::uint_fast8_t PAWN = 0b001;
+    static constexpr std::uint_fast8_t KNIGHT = 0b010;
+    static constexpr std::uint_fast8_t BISHOP = 0b011;
+    static constexpr std::uint_fast8_t ROOK = 0b100;
+    static constexpr std::uint_fast8_t QUEEN = 0b101;
+    static constexpr std::uint_fast8_t KING = 0b110;
 
 
     // MOVE STRUCT
@@ -53,25 +62,25 @@ private:
     {
     public:
         // Starting square of the move [0, 63] -> [a1, h8]
-        inline int16 start() const noexcept;
+        inline std::uint_fast8_t start() const noexcept;
 
         // Ending square of the move [0, 63] -> [a1, h8]
-        inline int16 target() const noexcept;
+        inline std::uint_fast8_t target() const noexcept;
 
         // Peice and color of moving peice (peice that is on the starting square of the move
-        inline int16 moving() const noexcept;
+        inline std::uint_fast8_t moving() const noexcept;
 
         // Peice and color of captured peice
-        inline int16 captured() const noexcept;
+        inline std::uint_fast8_t captured() const noexcept;
 
         // Returns the color of the whose move is
-        inline int16 color() const noexcept;
+        inline std::uint_fast8_t color() const noexcept;
 
         // Returs the color who the move is being played against
-        inline int16 enemy() const noexcept;
+        inline std::uint_fast8_t enemy() const noexcept;
 
         // In case of promotion, returns the peice value of the promoted peice
-        inline int16 promotion() const noexcept;
+        inline std::uint_fast8_t promotion() const noexcept;
 
         // Returns true if move is castling move
         inline bool isEnPassant() const noexcept;
@@ -85,12 +94,14 @@ private:
         // Sets the legal flag of the move
         inline void setLegalFlag() noexcept;
 
-        inline int16 earlygamePositionalMaterialChange() noexcept;
+        inline void unSetLegalFlag() noexcept;
 
-        inline int16 endgamePositionalMaterialChange() noexcept;
+        inline std::int_fast32_t earlygamePositionalMaterialChange() noexcept;
+
+        inline std::int_fast32_t endgamePositionalMaterialChange() noexcept;
 
         // Heuristic geuss for the strength of the move (used for move ordering)
-        int16 strengthGuess;
+        std::int_fast32_t strengthGuess;
 
         // Override equality operator with other move
         inline bool operator==(const Move& other) const;
@@ -99,79 +110,72 @@ private:
         inline bool operator==(const StandardMove& other) const;
 
         // Override stream insertion operator to display info about the move
-        std::string toString();
+        std::string toString() const;
 
         // CONSTRUCTORS
         // Construct a new Move object from the given board and given flags (en_passant, castle, promotion, etc.)
-        Move(const EngineV1_0* board, int16 start, int16 target, int16 givenFlags);
+        Move(const EngineV1_2* board, std::uint_fast8_t start, std::uint_fast8_t target, std::uint_fast8_t givenFlags);
 
         Move();
 
         // FLAGS
-        static constexpr int16 NONE = 0b00000000;
-        static constexpr int16 PROMOTION = 0b00000111;
-        static constexpr int16 LEGAL = 0b00001000;
-        static constexpr int16 EN_PASSANT = 0b00010000;
-        static constexpr int16 CASTLE = 0b00100000;
+        static constexpr std::uint_fast8_t NONE = 0b00000000;
+        static constexpr std::uint_fast8_t PROMOTION = 0b00000111;
+        static constexpr std::uint_fast8_t LEGAL = 0b00001000;
+        static constexpr std::uint_fast8_t EN_PASSANT = 0b00010000;
+        static constexpr std::uint_fast8_t CASTLE = 0b00100000;
     private:
         // Starting square of the move [0, 63] -> [a1, h8]
-        int16 startSquare;
+        std::uint_fast8_t startSquare;
 
         // Ending square of the move [0, 63] -> [a1, h8]
-        int16 targetSquare;
+        std::uint_fast8_t targetSquare;
 
         // Peice and color of moving peice (peice that is on the starting square of the move
-        int16 movingPeice;
+        std::uint_fast8_t movingPeice;
 
         // Peice and color of captured peice
-        int16 capturedPeice;
+        std::uint_fast8_t capturedPeice;
 
         // 8 bit flags of move
-        int16 flags;
+        std::uint_fast8_t flags;
 
         bool posmatInit;
 
-        int16 earlyPosmat;
-        int16 endPosmat;
+        std::int_fast32_t earlyPosmat;
+        std::int_fast32_t endPosmat;
 
         void initializePosmat() noexcept;
     };
 
     // BOARD MEMBERS
     // color and peice type at every square (index [0, 63] -> [a1, h8])
-    int16 peices[64];
+    std::uint_fast8_t peices[64];
 
     // contains the halfmove number when the kingside castling rights were lost for white or black (index 0 and 1)
-    int16 kingsideCastlingRightsLost[2];
+    std::int_fast32_t kingsideCastlingRightsLost[2];
 
     // contains the halfmove number when the queenside castling rights were lost for white or black (index 0 and 1)
-    int16 queensideCastlingRightsLost[2];
+    std::int_fast32_t queensideCastlingRightsLost[2];
 
-    // file where a pawn has just moved two squares over
-    int16 eligibleEnPassantSquare[500];
-
-    // number of half moves since pawn move or capture (half move is one player taking a turn) (used for 50 move rule)
-    int16 halfmovesSincePawnMoveOrCapture[250];
-    int16 hmspmocIndex;
+    // | 6 bits en-passant square | 6 bits halfmoves since pawn move/capture | 20 bits zobrist hash |
+    std::uint_fast32_t positionInfo[MAX_DEPTH + 50];
+    std::uint_fast8_t positionInfoIndex;
 
     // total half moves since game start (half move is one player taking a turn)
-    int16 totalHalfmoves;
+    std::uint_fast32_t totalHalfmoves;
 
     // index of the white and black king (index 0 and 1)
-    int16 kingIndex[2];
-
-    //std::forward_list<uint32> positionHistory;
-    // array of 32 bit hashes of the positions used for checking for repititions
-    uint32 positionHistory[500];
+    std::uint_fast8_t kingIndex[2];
 
     // zobrist hash of the current position
-    uint64 zobrist;
+    std::uint_fast64_t zobrist;
 
     // number of peices on the board for either color and for every peice
-    int16 numPeices[15];
+    std::uint_fast8_t numPeices[15];
 
     // number of total on the board for either color 
-    int16 numTotalPeices[2];
+    std::uint_fast8_t numTotalPeices[2];
 
 
     // SEARCH/EVALUATION MEMBERS
@@ -179,12 +183,16 @@ private:
     std::vector<Move> enginePositionMoves;
 
     // Inbalance of peice placement, used for evaluation function 
-    int16 material_stage_weight;
-    int16 earlygamePositionalMaterialInbalance;
-    int16 endgamePositionalMaterialInbalance;
+    std::uint_fast8_t material_stage_weight;
+    std::int_fast32_t earlygamePositionalMaterialInbalance;
+    std::int_fast32_t endgamePositionalMaterialInbalance;
+
+    // Search data
+    std::uint_fast32_t nodesSearchedThisMove;
 
 
     // PRECOMPUTED DATA
+    static const std::int_fast16_t PEICE_VALUES[15];
 
     /**
      * Value of every peice [color][peice] at every index [0, 63] -> [a1, h8]
@@ -208,11 +216,17 @@ private:
     // Generates pseudo-legal moves for the current position
     // Populates the stack starting from the given index
     // Doesnt generate all pseudo legal moves, omits moves that are guarenteed to be illegal
-    void generatePseudoLegalMoves(Move* stack, int16& idx) const;
+    // Returns true of the king was in check
+    bool generatePseudoLegalMoves(Move* stack, std::uint_fast32_t& idx, bool generateOnlyCaptures = false) noexcept;
 
     // Generates legal moves for the current position
     // Not as fast as pseudoLegalMoves() for searching
     std::vector<Move> legalMoves();
+
+    // Generates pseudo-legal captures for the current position
+    // Populates the stack starting from the given index
+    // Assumes the king is not in check
+    void generateCaptures(Move* stack, std::uint_fast32_t& idx, bool* pinnedPeices) const;
 
     // update the board based on the inputted move (must be pseudo legal)
     // returns true if move was legal and process completed
@@ -222,7 +236,13 @@ private:
     void unmakeMove(Move& move);
 
     // returns true if the last move has put the game into a forced draw (threefold repitition / 50 move rule / insufficient material)
-    bool isDraw() const;
+    inline bool isDraw() const;
+
+    // returns the number of moves since pawn move or capture
+    inline std::uint_fast8_t halfMovesSincePawnMoveOrCapture() const noexcept;
+
+    // returns the index of the square over which a pawn has just jumped over
+    inline std::uint_fast8_t eligibleEnpassantSquare() const noexcept;
 
     // returns true if the last move played has led to a draw by threefold repitition
     bool isDrawByThreefoldRepitition() const noexcept;
@@ -237,7 +257,7 @@ private:
     bool repititionOcurred() const noexcept;
 
     // return true if the king belonging to the inputted color is currently being attacked
-    bool inCheck(int16 c) const;
+    bool inCheck(std::uint_fast8_t c) const;
 
     // return true if inputted pseudo legal move is legal in the current position
     bool isLegal(Move& move);
@@ -247,16 +267,65 @@ private:
     bool castlingMoveIsLegal(Move& move);
 
 
-    //SEARCH/EVAL METHODS
+    // SEARCH/EVAL METHODS
+
+    // Resets the search parameters
+    void resetSearchMembers();
+
     // returns number of total positions a certain depth away
-    std::uint64_t perft_h(int16 depth, Move* moveStack, int16 startMoves);
+    std::uint64_t perft_h(std::uint_fast8_t depth, Move* moveStack, std::uint_fast32_t startMoves);
 
     // Standard minimax search
-    int16 search_std(int16 plyFromRoot, int16 depth, Move* moveStack, int16 startMoves);
+    std::int_fast32_t search_std(std::uint_fast8_t plyFromRoot, std::uint_fast8_t depth, Move* moveStack, std::uint_fast32_t startMoves, std::int_fast32_t alpha, std::int_fast32_t beta);
+
+    // Quiscence search
+    std::int_fast32_t search_quiscence(std::uint_fast8_t plyFromRoot, Move* moveStack, std::uint_fast32_t startMoves, std::int_fast32_t alpha, std::int_fast32_t beta);
 
     // Static evaluation function
-    int16 evaluate();
+    std::int_fast32_t evaluate();
 
     // returns a heuristic evaluation of the position based on the total material and positions of the peices on the board
-    inline int16 lazyEvaluation() const noexcept;
+    inline std::int_fast32_t lazyEvaluation() const noexcept;
+
+
+    // MOVE ORDERING CLASS
+    // Wrapper container for the move stack which handles move ordering
+    class MoveOrderer
+    {
+    public:
+        // Initializes the container by generating heuristic scores for all of the moves in the stack within the bounds
+        MoveOrderer(EngineV1_2* engine, Move* moveStack, std::uint_fast32_t startMoves, std::uint_fast32_t endMoves, Move* skipThisMove = nullptr);
+
+        // Generates a heuristic guess for how strong a move is based on the current position
+        static void generateStrengthGuess(EngineV1_2* engine, Move& move);
+
+        class Iterator {
+        public:
+            Iterator(Move* start, std::uint_fast32_t size, std::uint_fast32_t currentIndex);
+
+            Move& operator*();
+
+            // Retreives move with the next highest score (selection sort)
+            Iterator& operator++();
+
+            bool operator!=(const Iterator& other) const;
+
+        private:
+            Move* start;
+            std::uint_fast32_t size;
+            std::uint_fast32_t idx;
+        };
+
+        // Retreives the move with the highest score
+        Iterator begin();
+
+        inline Iterator end();
+
+    private:
+        std::uint_fast32_t startMoves;
+
+        std::uint_fast32_t endMoves;
+
+        Move* moveStack;
+    };
 };

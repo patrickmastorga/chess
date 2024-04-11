@@ -1,4 +1,4 @@
-#include "EngineV1_1.h"
+#include "EngineV1_2.h"
 
 #include <cstdint>
 #include <iostream>
@@ -35,27 +35,27 @@ constexpr int32 REPITIION_EVALUATION = -50;
 // TODO add some sort of protection for games with halfmove counter > 500
 
 // PUBLIC METHODS
-EngineV1_1::EngineV1_1(const std::string& fenString)
+EngineV1_2::EngineV1_2(const std::string& fenString)
 {
     loadFEN(fenString);
 }
 
-EngineV1_1::EngineV1_1()
+EngineV1_2::EngineV1_2()
 {
     loadStartingPosition();
 }
 
-void EngineV1_1::loadStartingPosition()
+void EngineV1_2::loadStartingPosition()
 {
     loadFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 }
 
-void EngineV1_1::loadFEN(const std::string& fenString)
+void EngineV1_2::loadFEN(const std::string& fenString)
 {
     initializeFen(fenString);
 }
 
-std::vector<StandardMove> EngineV1_1::getLegalMoves() noexcept
+std::vector<StandardMove> EngineV1_2::getLegalMoves() noexcept
 {
     std::vector<StandardMove> moves;
 
@@ -66,12 +66,12 @@ std::vector<StandardMove> EngineV1_1::getLegalMoves() noexcept
     return moves;
 }
 
-int EngineV1_1::colorToMove() noexcept
+int EngineV1_2::colorToMove() noexcept
 {
     return 1 - 2 * (totalHalfmoves % 2);
 }
 
-StandardMove EngineV1_1::computerMove(std::chrono::milliseconds thinkTime)
+StandardMove EngineV1_2::computerMove(std::chrono::milliseconds thinkTime)
 {
     if (gameOver().has_value()) {
         throw std::runtime_error("Game is over, cannot get computer move!");
@@ -107,7 +107,7 @@ StandardMove EngineV1_1::computerMove(std::chrono::milliseconds thinkTime)
         auto searchCutoff = endSearch - lastSearchDuration * 1.25;
         auto start = std::chrono::high_resolution_clock::now();
 
-//        std::cout << "depth " << (int)depth + 1;
+        //        std::cout << "depth " << (int)depth + 1;
 
         uint32 nodesSearchedBeforeThisIteration = nodesSearchedThisMove;
 
@@ -126,7 +126,7 @@ StandardMove EngineV1_1::computerMove(std::chrono::milliseconds thinkTime)
         // Run search for each move
         for (Move& move : enginePositionMoves) {
             if (std::chrono::high_resolution_clock::now() > searchCutoff) {
-//                std::cout << " timeout";
+                //                std::cout << " timeout";
                 break;
             }
 
@@ -141,16 +141,16 @@ StandardMove EngineV1_1::computerMove(std::chrono::milliseconds thinkTime)
 
         // Sort moves in order by score
         std::stable_sort(enginePositionMoves.begin(), enginePositionMoves.end(), [](const Move& l, const Move& r) { return l.strengthGuess > r.strengthGuess; });
-//        std::cout << " bestmove " << enginePositionMoves[0].toString();
+        //        std::cout << " bestmove " << enginePositionMoves[0].toString();
 
-//        std::cout << " nodes " << nodesSearchedThisMove - nodesSearchedBeforeThisIteration;
+        //        std::cout << " nodes " << nodesSearchedThisMove - nodesSearchedBeforeThisIteration;
 
         auto end = std::chrono::high_resolution_clock::now();
         lastSearchDuration = end - start;
         totalSearchTime += std::chrono::duration_cast<std::chrono::milliseconds>(lastSearchDuration);
-//        std::cout << " time " << std::chrono::duration_cast<std::chrono::milliseconds>(lastSearchDuration).count() << "millis" << std::endl;
+        //        std::cout << " time " << std::chrono::duration_cast<std::chrono::milliseconds>(lastSearchDuration).count() << "millis" << std::endl;
 
-        // Fastest mate is already found
+                // Fastest mate is already found
         if (std::abs(enginePositionMoves[0].strengthGuess) >= MATE_CUTOFF) {
             break;
         }
@@ -176,7 +176,7 @@ StandardMove EngineV1_1::computerMove(std::chrono::milliseconds thinkTime)
     return StandardMove(bestMove.start(), bestMove.target(), bestMove.promotion());
 }
 
-void EngineV1_1::inputMove(const StandardMove& move)
+void EngineV1_2::inputMove(const StandardMove& move)
 {
     if (gameOver().has_value()) {
         throw std::runtime_error("Game is over, cannot input move!");
@@ -208,7 +208,7 @@ void EngineV1_1::inputMove(const StandardMove& move)
     throw std::runtime_error("inputted move is not legal in the current position!");
 }
 
-std::optional<int> EngineV1_1::gameOver() noexcept
+std::optional<int> EngineV1_2::gameOver() noexcept
 {
     if (isDraw()) {
         return 0;
@@ -221,12 +221,12 @@ std::optional<int> EngineV1_1::gameOver() noexcept
     return std::nullopt;
 }
 
-bool EngineV1_1::inCheck() const noexcept
+bool EngineV1_2::inCheck() const noexcept
 {
     return inCheck(totalHalfmoves % 2);
 }
 
-std::string EngineV1_1::asFEN() const noexcept
+std::string EngineV1_2::asFEN() const noexcept
 {
     std::string fen = "";
     int32 c = totalHalfmoves % 2;
@@ -301,7 +301,7 @@ std::string EngineV1_1::asFEN() const noexcept
     return fen;
 }
 
-std::uint64_t EngineV1_1::perft(int depth, bool printOut = false) noexcept
+std::uint64_t EngineV1_2::perft(int depth, bool printOut = false) noexcept
 {
     if (depth == 0) {
         return 1ULL;
@@ -341,7 +341,7 @@ std::uint64_t EngineV1_1::perft(int depth, bool printOut = false) noexcept
     return nodes;
 }
 
-std::uint64_t EngineV1_1::search_perft(int depth) noexcept
+std::uint64_t EngineV1_2::search_perft(int depth) noexcept
 {
     Move moveStack[1500];
 
@@ -391,7 +391,7 @@ std::uint64_t EngineV1_1::search_perft(int depth) noexcept
     return nodes;
 }
 
-std::uint64_t EngineV1_1::search_perft(std::chrono::milliseconds thinkTime) noexcept
+std::uint64_t EngineV1_2::search_perft(std::chrono::milliseconds thinkTime) noexcept
 {
     // Time management variables
     auto endSearch = std::chrono::high_resolution_clock::now() + thinkTime;
@@ -458,68 +458,68 @@ std::uint64_t EngineV1_1::search_perft(std::chrono::milliseconds thinkTime) noex
 
 // MOVE STRUCT
 // PUBLIC METHODS
-inline uint8 EngineV1_1::Move::start() const noexcept
+inline uint8 EngineV1_2::Move::start() const noexcept
 {
     return startSquare;
 }
 
-inline uint8 EngineV1_1::Move::target() const noexcept
+inline uint8 EngineV1_2::Move::target() const noexcept
 {
     return targetSquare;
 }
 
-inline uint8 EngineV1_1::Move::moving() const noexcept
+inline uint8 EngineV1_2::Move::moving() const noexcept
 {
     return movingPeice;
 }
 
-inline uint8 EngineV1_1::Move::captured() const noexcept
+inline uint8 EngineV1_2::Move::captured() const noexcept
 {
     return capturedPeice;
 }
 
-inline uint8 EngineV1_1::Move::color() const noexcept
+inline uint8 EngineV1_2::Move::color() const noexcept
 {
     return (movingPeice >> 3) << 3;
 }
 
-inline uint8 EngineV1_1::Move::enemy() const noexcept
+inline uint8 EngineV1_2::Move::enemy() const noexcept
 {
     return !(movingPeice >> 3) << 3;
 }
 
-inline uint8 EngineV1_1::Move::promotion() const noexcept
+inline uint8 EngineV1_2::Move::promotion() const noexcept
 {
     return flags & PROMOTION;
 }
 
-inline bool EngineV1_1::Move::isEnPassant() const noexcept
+inline bool EngineV1_2::Move::isEnPassant() const noexcept
 {
     return flags & EN_PASSANT;
 }
 
-inline bool EngineV1_1::Move::isCastling() const noexcept
+inline bool EngineV1_2::Move::isCastling() const noexcept
 {
     return flags & CASTLE;
 }
 
-inline bool EngineV1_1::Move::legalFlagSet() const noexcept
+inline bool EngineV1_2::Move::legalFlagSet() const noexcept
 {
     return flags & LEGAL;
 }
 
-inline void EngineV1_1::Move::setLegalFlag() noexcept
+inline void EngineV1_2::Move::setLegalFlag() noexcept
 {
     flags |= LEGAL;
 }
 
-inline void EngineV1_1::Move::unSetLegalFlag() noexcept
+inline void EngineV1_2::Move::unSetLegalFlag() noexcept
 {
     flags |= LEGAL;
     flags ^= LEGAL;
 }
 
-inline int32 EngineV1_1::Move::earlygamePositionalMaterialChange() noexcept
+inline int32 EngineV1_2::Move::earlygamePositionalMaterialChange() noexcept
 {
     if (!posmatInit) {
         initializePosmat();
@@ -527,7 +527,7 @@ inline int32 EngineV1_1::Move::earlygamePositionalMaterialChange() noexcept
     return earlyPosmat;
 }
 
-inline int32 EngineV1_1::Move::endgamePositionalMaterialChange() noexcept
+inline int32 EngineV1_2::Move::endgamePositionalMaterialChange() noexcept
 {
     if (!posmatInit) {
         initializePosmat();
@@ -535,21 +535,21 @@ inline int32 EngineV1_1::Move::endgamePositionalMaterialChange() noexcept
     return endPosmat;
 }
 
-inline bool EngineV1_1::Move::operator==(const EngineV1_1::Move& other) const
+inline bool EngineV1_2::Move::operator==(const EngineV1_2::Move& other) const
 {
     return this->start() == other.start()
         && this->target() == other.target()
         && this->promotion() == other.promotion();
 }
 
-inline bool EngineV1_1::Move::operator==(const StandardMove& other) const
+inline bool EngineV1_2::Move::operator==(const StandardMove& other) const
 {
     return this->start() == other.startSquare
         && this->target() == other.targetSquare
         && this->promotion() == other.promotion;
 }
 
-std::string EngineV1_1::Move::toString() const
+std::string EngineV1_2::Move::toString() const
 {
     std::string string;
     string += chesshelpers::boardIndexToAlgebraicNotation(start());
@@ -562,7 +562,7 @@ std::string EngineV1_1::Move::toString() const
 }
 
 // CONSTRUCTORS
-EngineV1_1::Move::Move(const EngineV1_1* board, uint8 start, uint8 target, uint8 givenFlags) : startSquare(start), targetSquare(target), flags(givenFlags), strengthGuess(0), posmatInit(false), earlyPosmat(0), endPosmat(0)
+EngineV1_2::Move::Move(const EngineV1_2* board, uint8 start, uint8 target, uint8 givenFlags) : startSquare(start), targetSquare(target), flags(givenFlags), strengthGuess(0), posmatInit(false), earlyPosmat(0), endPosmat(0)
 {
     movingPeice = board->peices[start];
     capturedPeice = board->peices[target];
@@ -571,10 +571,10 @@ EngineV1_1::Move::Move(const EngineV1_1* board, uint8 start, uint8 target, uint8
     }
 }
 
-EngineV1_1::Move::Move() : startSquare(0), targetSquare(0), movingPeice(0), capturedPeice(0), flags(0), strengthGuess(0), posmatInit(false), earlyPosmat(0), endPosmat(0) {}
+EngineV1_2::Move::Move() : startSquare(0), targetSquare(0), movingPeice(0), capturedPeice(0), flags(0), strengthGuess(0), posmatInit(false), earlyPosmat(0), endPosmat(0) {}
 
 // PRIVATE METHODS
-void EngineV1_1::Move::initializePosmat() noexcept
+void EngineV1_2::Move::initializePosmat() noexcept
 {
     // Update zobrist hash, numpieces and positonal imbalance for moving peice
     earlyPosmat -= EARLYGAME_PEICE_VALUE[moving()][start()];
@@ -623,7 +623,7 @@ void EngineV1_1::Move::initializePosmat() noexcept
 // END MOVE STRUCT
 
 // BOARD METHODS
-void EngineV1_1::initializeFen(const std::string& fenString)
+void EngineV1_2::initializeFen(const std::string& fenString)
 {
     // Reset current members
     zobrist = 0;
@@ -837,7 +837,7 @@ void EngineV1_1::initializeFen(const std::string& fenString)
     enginePositionMoves = legalMoves();
 }
 
-bool EngineV1_1::generatePseudoLegalMoves(Move* stack, uint32& idx, bool generateOnlyCaptures) noexcept
+bool EngineV1_2::generatePseudoLegalMoves(Move* stack, uint32& idx, bool generateOnlyCaptures) noexcept
 {
     // TODO Backwards check/pin generation for endgame
     // TODO Better pinned peice generation (detect if sliding along diagonal of pin)
@@ -1467,7 +1467,7 @@ moveGeneration:
     return checks;
 }
 
-std::vector<EngineV1_1::Move> EngineV1_1::legalMoves()
+std::vector<EngineV1_2::Move> EngineV1_2::legalMoves()
 {
     Move moves[225];
     uint32 end = 0;
@@ -1484,7 +1484,7 @@ std::vector<EngineV1_1::Move> EngineV1_1::legalMoves()
     return legalMoves;
 }
 
-void EngineV1_1::generateCaptures(Move* stack, uint32& idx, bool* pinnedPeices) const
+void EngineV1_2::generateCaptures(Move* stack, uint32& idx, bool* pinnedPeices) const
 {
     uint8 c = totalHalfmoves % 2;
     uint8 color = c << 3;
@@ -1643,7 +1643,7 @@ void EngineV1_1::generateCaptures(Move* stack, uint32& idx, bool* pinnedPeices) 
     }
 }
 
-bool EngineV1_1::makeMove(EngineV1_1::Move& move)
+bool EngineV1_2::makeMove(EngineV1_2::Move& move)
 {
     uint8 c = move.moving() >> 3;
     uint8 color = c << 3;
@@ -1786,7 +1786,7 @@ bool EngineV1_1::makeMove(EngineV1_1::Move& move)
     return true;
 }
 
-void EngineV1_1::unmakeMove(EngineV1_1::Move& move)
+void EngineV1_2::unmakeMove(EngineV1_2::Move& move)
 {
     uint8 c = move.moving() >> 3;
     uint8 color = c << 3;
@@ -1882,22 +1882,22 @@ void EngineV1_1::unmakeMove(EngineV1_1::Move& move)
     positionInfo[positionInfoIndex--] = 0;
 }
 
-inline bool EngineV1_1::isDraw() const
+inline bool EngineV1_2::isDraw() const
 {
     return isDrawByFiftyMoveRule() || isDrawByInsufficientMaterial() || isDrawByThreefoldRepitition();
 }
 
-inline uint8 EngineV1_1::halfMovesSincePawnMoveOrCapture() const noexcept
+inline uint8 EngineV1_2::halfMovesSincePawnMoveOrCapture() const noexcept
 {
     return static_cast<uint8>((positionInfo[positionInfoIndex] >> 20) & 0b111111);
 }
 
-inline uint8 EngineV1_1::eligibleEnpassantSquare() const noexcept
+inline uint8 EngineV1_2::eligibleEnpassantSquare() const noexcept
 {
     return static_cast<uint8>(positionInfo[positionInfoIndex] >> 26);
 }
 
-bool EngineV1_1::isDrawByThreefoldRepitition() const noexcept
+bool EngineV1_2::isDrawByThreefoldRepitition() const noexcept
 {
     if (halfMovesSincePawnMoveOrCapture() < 8) {
         return false;
@@ -1921,12 +1921,12 @@ bool EngineV1_1::isDrawByThreefoldRepitition() const noexcept
     return false;
 }
 
-inline bool EngineV1_1::isDrawByFiftyMoveRule() const noexcept
+inline bool EngineV1_2::isDrawByFiftyMoveRule() const noexcept
 {
     return halfMovesSincePawnMoveOrCapture() >= 50;
 }
 
-bool EngineV1_1::isDrawByInsufficientMaterial() const noexcept
+bool EngineV1_2::isDrawByInsufficientMaterial() const noexcept
 {
     if (numTotalPeices[0] > 3 || numTotalPeices[1] > 3) {
         return false;
@@ -1937,7 +1937,7 @@ bool EngineV1_1::isDrawByInsufficientMaterial() const noexcept
     return !(numPeices[WHITE + PAWN] || numPeices[BLACK + PAWN] || numPeices[WHITE + ROOK] || numPeices[BLACK + ROOK] || numPeices[WHITE + QUEEN] || numPeices[BLACK + QUEEN]);
 }
 
-bool EngineV1_1::repititionOcurred() const noexcept
+bool EngineV1_2::repititionOcurred() const noexcept
 {
     if (halfMovesSincePawnMoveOrCapture() < 4) {
         return false;
@@ -1957,7 +1957,7 @@ bool EngineV1_1::repititionOcurred() const noexcept
     return false;
 }
 
-bool EngineV1_1::inCheck(uint8 c) const
+bool EngineV1_2::inCheck(uint8 c) const
 {
     // TODO Backwards check searching during endgame
 
@@ -2066,7 +2066,7 @@ bool EngineV1_1::inCheck(uint8 c) const
     return false;
 }
 
-bool EngineV1_1::isLegal(Move& move)
+bool EngineV1_2::isLegal(Move& move)
 {
     if (move.legalFlagSet()) {
         return true;
@@ -2089,7 +2089,7 @@ bool EngineV1_1::isLegal(Move& move)
     return false;
 }
 
-bool EngineV1_1::castlingMoveIsLegal(Move& move) {
+bool EngineV1_2::castlingMoveIsLegal(Move& move) {
     if (move.legalFlagSet()) {
         return true;
     }
@@ -2200,13 +2200,13 @@ bool EngineV1_1::castlingMoveIsLegal(Move& move) {
     return true;
 }
 
-void EngineV1_1::resetSearchMembers()
+void EngineV1_2::resetSearchMembers()
 {
     nodesSearchedThisMove = 0;
 }
 
 //SEARCH/EVAL METHODS
-std::uint64_t EngineV1_1::perft_h(uint8 depth, Move* moveStack, uint32 startMoves)
+std::uint64_t EngineV1_2::perft_h(uint8 depth, Move* moveStack, uint32 startMoves)
 {
     if (depth == 0) {
         return 1ULL;
@@ -2227,7 +2227,7 @@ std::uint64_t EngineV1_1::perft_h(uint8 depth, Move* moveStack, uint32 startMove
     return nodes;
 }
 
-int32 EngineV1_1::search_std(uint8 plyFromRoot, uint8 depth, Move* moveStack, uint32 startMoves, int32 alpha, int32 beta)
+int32 EngineV1_2::search_std(uint8 plyFromRoot, uint8 depth, Move* moveStack, uint32 startMoves, int32 alpha, int32 beta)
 {
     ++nodesSearchedThisMove;
     // BASE CASES
@@ -2282,7 +2282,7 @@ int32 EngineV1_1::search_std(uint8 plyFromRoot, uint8 depth, Move* moveStack, ui
     return best_eval; // PV node (exact value)
 }
 
-int32 EngineV1_1::search_quiscence(uint8 plyFromRoot, Move* moveStack, uint32 startMoves, int32 alpha, int32 beta)
+int32 EngineV1_2::search_quiscence(uint8 plyFromRoot, Move* moveStack, uint32 startMoves, int32 alpha, int32 beta)
 {
     ++nodesSearchedThisMove;
 
@@ -2345,18 +2345,18 @@ int32 EngineV1_1::search_quiscence(uint8 plyFromRoot, Move* moveStack, uint32 st
     return best_eval;
 }
 
-int32 EngineV1_1::evaluate()
+int32 EngineV1_2::evaluate()
 {
     return lazyEvaluation();
 }
 
-inline int32 EngineV1_1::lazyEvaluation() const noexcept
+inline int32 EngineV1_2::lazyEvaluation() const noexcept
 {
     return (material_stage_weight * earlygamePositionalMaterialInbalance + (128 - material_stage_weight) * endgamePositionalMaterialInbalance) / 128;
 }
 
 // MOVE ORDERING CLASS
-EngineV1_1::MoveOrderer::MoveOrderer(EngineV1_1* engine, Move* moveStack, uint32 startMoves, uint32 endMoves, Move* skipThisMove) : moveStack(moveStack), startMoves(startMoves), endMoves(endMoves)
+EngineV1_2::MoveOrderer::MoveOrderer(EngineV1_2* engine, Move* moveStack, uint32 startMoves, uint32 endMoves, Move* skipThisMove) : moveStack(moveStack), startMoves(startMoves), endMoves(endMoves)
 {
     if (skipThisMove != nullptr) {
         for (uint32 i = startMoves; i < endMoves; ++i) {
@@ -2371,7 +2371,7 @@ EngineV1_1::MoveOrderer::MoveOrderer(EngineV1_1* engine, Move* moveStack, uint32
     }
 }
 
-void EngineV1_1::MoveOrderer::generateStrengthGuess(EngineV1_1* engine, EngineV1_1::Move& move)
+void EngineV1_2::MoveOrderer::generateStrengthGuess(EngineV1_2* engine, EngineV1_2::Move& move)
 {
     /*
     if (move.promotion()) {
@@ -2397,7 +2397,7 @@ void EngineV1_1::MoveOrderer::generateStrengthGuess(EngineV1_1* engine, EngineV1
     move.strengthGuess = score * engine->colorToMove();
 }
 
-EngineV1_1::MoveOrderer::Iterator EngineV1_1::MoveOrderer::begin()
+EngineV1_2::MoveOrderer::Iterator EngineV1_2::MoveOrderer::begin()
 {
     uint32 maxIndex = startMoves;
     int32 maxStrength = moveStack[startMoves].strengthGuess;
@@ -2416,19 +2416,19 @@ EngineV1_1::MoveOrderer::Iterator EngineV1_1::MoveOrderer::begin()
     return Iterator(moveStack + startMoves, endMoves - startMoves, 0);
 }
 
-inline EngineV1_1::MoveOrderer::Iterator EngineV1_1::MoveOrderer::end()
+inline EngineV1_2::MoveOrderer::Iterator EngineV1_2::MoveOrderer::end()
 {
     return Iterator(moveStack + startMoves, endMoves - startMoves, endMoves - startMoves);
 }
 
-inline EngineV1_1::MoveOrderer::Iterator::Iterator(Move* start, uint32 size, uint32 currentIndex) : start(start), size(size), idx(currentIndex) {}
+inline EngineV1_2::MoveOrderer::Iterator::Iterator(Move* start, uint32 size, uint32 currentIndex) : start(start), size(size), idx(currentIndex) {}
 
-inline EngineV1_1::Move& EngineV1_1::MoveOrderer::Iterator::operator*()
+inline EngineV1_2::Move& EngineV1_2::MoveOrderer::Iterator::operator*()
 {
     return start[idx];
 }
 
-EngineV1_1::MoveOrderer::Iterator& EngineV1_1::MoveOrderer::Iterator::operator++() {
+EngineV1_2::MoveOrderer::Iterator& EngineV1_2::MoveOrderer::Iterator::operator++() {
     uint32 maxIndex = ++idx;
     int32 maxStrength = start[idx].strengthGuess;
 
@@ -2446,7 +2446,7 @@ EngineV1_1::MoveOrderer::Iterator& EngineV1_1::MoveOrderer::Iterator::operator++
     return *this;
 }
 
-inline bool EngineV1_1::MoveOrderer::Iterator::operator!=(const Iterator& other) const
+inline bool EngineV1_2::MoveOrderer::Iterator::operator!=(const Iterator& other) const
 {
     return idx != other.idx;
 }

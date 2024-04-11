@@ -77,7 +77,7 @@
       <PreprocessorDefinitions>SFML_STATIC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\C++\SFML-2.6.1\include;$(SolutionDir)base;$(SolutionDir)graphical_board;$(SolutionDir)v1_0;$(SolutionDir)v1_1</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\C++\SFML-2.6.1\include;$(SolutionDir)base;$(SolutionDir)graphical_board;$(SolutionDir)v1_0;$(SolutionDir)v1_1;$(SolutionDir)v1_2</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -95,7 +95,7 @@
       <PreprocessorDefinitions>SFML_STATIC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\C++\SFML-2.6.1\include;$(SolutionDir)base;$(SolutionDir)graphical_board;$(SolutionDir)v1_0;$(SolutionDir)v1_1</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\C++\SFML-2.6.1\include;$(SolutionDir)base;$(SolutionDir)graphical_board;$(SolutionDir)v1_0;$(SolutionDir)v1_1;$(SolutionDir)v1_2</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -113,7 +113,7 @@
       <PreprocessorDefinitions>SFML_STATIC;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\C++\SFML-2.6.1\include;$(SolutionDir)base;$(SolutionDir)graphical_board;$(SolutionDir)v1_0;$(SolutionDir)v1_1</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\C++\SFML-2.6.1\include;$(SolutionDir)base;$(SolutionDir)graphical_board;$(SolutionDir)v1_0;$(SolutionDir)v1_1;$(SolutionDir)v1_2</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -131,7 +131,7 @@
       <PreprocessorDefinitions>SFML_STATIC;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\C++\SFML-2.6.1\include;$(SolutionDir)base;$(SolutionDir)graphical_board;$(SolutionDir)v1_0;$(SolutionDir)v1_1</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\C++\SFML-2.6.1\include;$(SolutionDir)base;$(SolutionDir)graphical_board;$(SolutionDir)v1_0;$(SolutionDir)v1_1;$(SolutionDir)v1_2</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -157,6 +157,9 @@
     </ProjectReference>
     <ProjectReference Include="..\v1_1\v1_1.vcxproj">
       <Project>{b06a93fe-3a17-4718-846f-41f7ab531d6b}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\v1_2\v1_2.vcxproj">
+      <Project>{899c9f00-b2e3-4176-a394-b9182cc04e96}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

@@ -1,13 +1,13 @@
-#pragma once
+#include "EngineV1_1.h"
 #include <cstdint>
 
-const std::int_fast16_t PEICE_VALUES[15] = { 0, 100, 320, 330, 500, 900, 0, 0, 0, -100, -320, -330, -500, -900, 0 };
+const std::int_fast16_t EngineV1_1::PEICE_VALUES[15] = { 0, 100, 320, 330, 500, 900, 0, 0, 0, -100, -320, -330, -500, -900, 0 };
 
 /**
  * Value of every peice [color][peice] at every index [0, 63] -> [a1, h8]
  * Used for evaluating a position
  */
-std::int_fast16_t EARLYGAME_PEICE_VALUE[15][64] = {
+const std::int_fast16_t EngineV1_1::EARLYGAME_PEICE_VALUE[15][64] = {
     {
         0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0,
@@ -164,7 +164,7 @@ std::int_fast16_t EARLYGAME_PEICE_VALUE[15][64] = {
  * Value of every peice [color][peice] at every index [0, 63] -> [a1, h8]
  * Used for evaluating a position
  */
-std::int_fast16_t ENDGAME_PEICE_VALUE[15][64] = {
+const std::int_fast16_t EngineV1_1::ENDGAME_PEICE_VALUE[15][64] = {
     {
         0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0,
@@ -317,4 +317,4 @@ std::int_fast16_t ENDGAME_PEICE_VALUE[15][64] = {
     }
 };
 
-const std::uint_fast8_t PEICE_STAGE_WEIGHTS[15] = { 0, 0, 6, 6, 11, 18, 0, 0, 0, 0, 6, 6, 11, 18, 0 };
+const std::uint_fast8_t EngineV1_1::PEICE_STAGE_WEIGHTS[15] = { 0, 0, 6, 6, 11, 18, 0, 0, 0, 0, 6, 6, 11, 18, 0 };
