@@ -7,12 +7,13 @@
 #define ENGINE_2_HEADER_FILE "EngineV1_2.h"
 #define ENGINE_2_CLASS_NAME EngineV1_2
 #define ENGINE_2_NAME "engine_v1.2"
-#define THINK_TIME 150ms
+#define THINK_TIME 100ms
+#define TOTAL_MATCHES 1
 #define BOARD_SIZE 960
-#define LOG_FILE_NAME "log.txt"
+#define LOG_FILE_NAME "games.txt"
+#define OUTPUT_FILE_NAME "results.txt"
 //////////////////////////////////////////////////////////
 
-#define TOTAL_MATCHES 1
 
 #include <SFML/Graphics.hpp>
 #include <SFML/Graphics/Font.hpp>
@@ -100,15 +101,23 @@ int main()
     // Setup for loggin results
     std::ofstream game_log(LOG_FILE_NAME);
     std::map<std::string, std::string> headers;
+    headers["Varient"] = "From Position";
 
     // Loop
     int matchNumber = 0;
     std::ifstream positions("sparring_positions.txt");
 
+    int engine1Wins = 0;
+    int engine2Wins = 0;
+    int draws = 0;
+
     std::string fen;
-    while (std::getline(positions, fen)) {
+    while (matchNumber < TOTAL_MATCHES && std::getline(positions, fen)) {
         matchNumber++;
         using namespace std::chrono_literals;
+
+        // Update pgn header to fen
+        headers["FEN"] = fen;
 
         // Play game
         board.loadFEN(fen);
@@ -160,9 +169,20 @@ int main()
         }
 
         // Log results
+        switch (board.gameOver().value()) {
+        case -1:
+            engine2Wins++;
+            break;
+        case 0:
+            draws++;
+            break;
+        case 1:
+            engine1Wins++;
+            break;
+        }
         headers["White"] = ENGINE_1_NAME;
         headers["Black"] = ENGINE_2_NAME;
-        headers["Event"] = "Sparring Game FEN: " + fen;
+        headers["Event"] = "Sparring Match " + std::to_string(matchNumber);
         headers["Termination"] = "Normal";
         game_log << board.asPGN(headers);
 
@@ -217,11 +237,33 @@ int main()
         }
 
         // Log results
+        switch (board.gameOver().value()) {
+        case -1:
+            engine1Wins++;
+            break;
+        case 0:
+            draws++;
+            break;
+        case 1:
+            engine2Wins++;
+            break;
+        }
         headers["White"] = ENGINE_1_NAME;
         headers["Black"] = ENGINE_2_NAME;
-        headers["Event"] = "Sparring Game FEN: " + fen;
+        headers["Event"] = "Sparring Match " + std::to_string(matchNumber);
         headers["Termination"] = "Normal";
         game_log << board.asPGN(headers);
+    }
+
+    // Output results
+    std::ofstream output_file(OUTPUT_FILE_NAME);
+    if (output_file.is_open()) {
+        output_file << "RESULTS\n";
+        output_file << ENGINE_1_NAME << ": " << std::to_string(engine1Wins) << "\n";
+        output_file << "Draws: " << std::to_string(draws) << "\n";
+        output_file << ENGINE_2_NAME << ": " << std::to_string(engine2Wins) << "\n";
+
+        output_file.close();
     }
 
     // End of program
