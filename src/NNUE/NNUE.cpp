@@ -88,7 +88,7 @@ NNUE::NNUE()
     file.close();
 
     for (int i = 0; i < HIDDEN_2_SIZE; i++) {
-        LINEAR_1_WEIGHT[i] = static_cast<std::uint8_t>(buffer[i]);
+        LINEAR_2_WEIGHT[i] = static_cast<std::uint8_t>(buffer[i]);
     }
 
 
@@ -105,36 +105,72 @@ NNUE::NNUE()
     delete[] buffer;
 }
 
-void NNUE::refreshAccumulator(Accumulator& output, std::vector<std::int_fast16_t>& activeFeatures)
+void NNUE::refreshAccumulator(Accumulator& output, std::vector<std::uint_fast16_t>& activeFeatures)
 {
     __m256i accumulator = _mm256_load_si256((__m256i*)SPARSE_LINEAR_BIAS);
 
     // Add the weights (vector by vector) for the active features
-    for (std::int_fast16_t a : activeFeatures) {
+    for (std::uint_fast16_t a : activeFeatures) {
         accumulator = _mm256_add_epi16(accumulator, _mm256_load_si256((__m256i*)&SPARSE_LINEAR_WEIGHT[a * HIDDEN_1_SIZE]));
     }
 
     _mm256_store_si256((__m256i*)output.vec, accumulator);
 }
 
-void NNUE::updateAccumulator(Accumulator& input, Accumulator& output, std::vector<std::int_fast16_t>& removedFeatures, std::vector<std::int_fast16_t>& addedFeatures)
+void NNUE::updateAccumulatorMove(Accumulator& input, Accumulator& output, std::uint_fast16_t removedFeature, std::uint_fast16_t addedFeature)
+{
+    __m256i accumulator = _mm256_load_si256((__m256i*)input.vec);
+
+    // Subtract the weights vector for the removed feature
+    accumulator = _mm256_sub_epi16(accumulator, _mm256_load_si256((__m256i*) & SPARSE_LINEAR_WEIGHT[removedFeature * HIDDEN_1_SIZE]));
+
+    // Add the weights vector for the added feature
+    accumulator = _mm256_add_epi16(accumulator, _mm256_load_si256((__m256i*) & SPARSE_LINEAR_WEIGHT[addedFeature * HIDDEN_1_SIZE]));
+
+    _mm256_store_si256((__m256i*)output.vec, accumulator);
+}
+
+//void NNUE::updateAccumulatorMove(Accumulator& input, Accumulator& output, std::uint_fast16_t removedFeature, std::uint_fast16_t addedFeature)
+//{
+//    // Subtract the weights vector for the removed feature
+//    for (int i = 0; i < HIDDEN_1_SIZE; i++) {
+//        output.vec[i] = input.vec[i] - SPARSE_LINEAR_WEIGHT[removedFeature * HIDDEN_1_SIZE + i];
+//    }
+//
+//    // Add the weights vector for the added feature
+//    for (int i = 0; i < HIDDEN_1_SIZE; i++) {
+//        output.vec[i] += SPARSE_LINEAR_WEIGHT[addedFeature * HIDDEN_1_SIZE + i];
+//    }
+//}
+
+void NNUE::updateAccumulatorCapture(Accumulator& input, Accumulator& output, std::uint_fast16_t rem1, std::uint_fast16_t rem2, std::uint_fast16_t add1)
 {
     __m256i accumulator = _mm256_load_si256((__m256i*)input.vec);
 
     // Subtract the weights (vector by vector) for the removed features
-    for (std::int_fast16_t r : removedFeatures) {
-        accumulator = _mm256_sub_epi16(accumulator, _mm256_load_si256((__m256i*)&SPARSE_LINEAR_WEIGHT[r * HIDDEN_1_SIZE]));
-    }
+    accumulator = _mm256_sub_epi16(accumulator, _mm256_load_si256((__m256i*) & SPARSE_LINEAR_WEIGHT[rem1 * HIDDEN_1_SIZE]));
+    accumulator = _mm256_sub_epi16(accumulator, _mm256_load_si256((__m256i*) & SPARSE_LINEAR_WEIGHT[rem2 * HIDDEN_1_SIZE]));
 
     // Add the weights (vector by vector) for the added features
-    for (std::int_fast16_t a : addedFeatures) {
-        accumulator = _mm256_add_epi16(accumulator, _mm256_load_si256((__m256i*)&SPARSE_LINEAR_WEIGHT[a * HIDDEN_1_SIZE]));
-    }
+    accumulator = _mm256_add_epi16(accumulator, _mm256_load_si256((__m256i*) & SPARSE_LINEAR_WEIGHT[add1 * HIDDEN_1_SIZE]));
 
     _mm256_store_si256((__m256i*)output.vec, accumulator);
 }
 
-std::int_fast32_t NNUE::foward(Accumulator input)
+void NNUE::updateAccumulatorMove(Accumulator& input, Accumulator& output, std::uint_fast16_t removedFeature, std::uint_fast16_t addedFeature)
+{
+    // Subtract the weights vector for the removed feature
+    for (int i = 0; i < HIDDEN_1_SIZE; i++) {
+        output.vec[i] = input.vec[i] - SPARSE_LINEAR_WEIGHT[removedFeature * HIDDEN_1_SIZE + i];
+    }
+
+    // Add the weights vector for the added feature
+    for (int i = 0; i < HIDDEN_1_SIZE; i++) {
+        output.vec[i] += SPARSE_LINEAR_WEIGHT[addedFeature * HIDDEN_1_SIZE + i];
+    }
+}
+
+std::int_fast32_t NNUE::foward(Accumulator &input)
 {
     // Hidden layer 1
     alignas(4) std::int8_t hidden1[HIDDEN_1_SIZE];
@@ -146,7 +182,7 @@ std::int_fast32_t NNUE::foward(Accumulator input)
     // Foward pass
     crelu(input, hidden1);
     linear1(hidden1, temp);
-    crelu(temp, hidden1);
+    crelu(temp, hidden2);
     return linear2(hidden2);
 }
 
@@ -191,6 +227,24 @@ void NNUE::linear1(std::int8_t* input, std::int32_t* output)
     }
 }
 
+//void NNUE::linear1(std::int8_t* input, std::int32_t* output)
+//{
+//    // iterate over each row of weigts
+//    for (int i = 0; i < HIDDEN_2_SIZE; i++) {
+//        output[i] = LINEAR_1_BIAS[i];
+//
+//        // iterate over each column of weights
+//        for (int j = 0; j < HIDDEN_1_SIZE; i++) {
+//            output[i] += (int32)input[i] * LINEAR_1_WEIGHT[i * HIDDEN_1_SIZE + j];
+//        }
+//    }
+//
+//    // Divide by scaling factor
+//    for (int i = 0; i < HIDDEN_2_SIZE; i++) {
+//        output[i] >>= 6;
+//    }
+//}
+
 void NNUE::crelu(std::int32_t* input, std::int8_t* output)
 {
     // Split input into quarters
@@ -213,12 +267,13 @@ std::int_fast32_t NNUE::linear2(std::int8_t* input)
 {
     // Input and weight vectors
     __m128i vec = _mm_load_si128((__m128i*)input);
-    __m128i weights = _mm_load_si128((__m128i*)LINEAR_1_WEIGHT);
+    __m128i weights = _mm_load_si128((__m128i*)LINEAR_2_WEIGHT);
+    __m128i zero = _mm_setzero_si128();
 
     // Compute dot product of two vectors
-    __m128i dot = _mm_maddubs_epi16(vec, weights);
-    dot = _mm_hadd_epi16(dot, dot);
-    dot = _mm_hadd_epi32(dot, dot);
+    __m128i dot = _mm_dpbusd_epi32(zero, vec, weights);
+    dot = _mm_hadd_epi32(dot, zero);
+    dot = _mm_hadd_epi32(dot, zero);
 
     std::int_fast32_t out = _mm_extract_epi32(dot, 0) + LINEAR_2_BIAS;
 

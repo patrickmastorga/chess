@@ -3,6 +3,7 @@
 #include "PerftTestableEngine.h"
 #include "StandardMove.h"
 #include "TranspositionTable.h"
+#include "NNUE.h"
 
 #include <cstdint>
 #include <optional>
@@ -44,6 +45,8 @@ public:
     std::uint64_t search_perft(int depth) noexcept override;
 
     std::uint64_t search_perft(std::chrono::milliseconds thinkTime) noexcept override;
+
+    std::int_fast32_t testEval();
 
 private:
     // DEFINITIONS
@@ -196,6 +199,12 @@ private:
     // Transposition table
     std::unique_ptr<TranspositionTable> ttable;
 
+    // NNUE nueral network evaluator
+    NNUE nnue;
+
+    // Buffer for storing accumulators during the search
+    NNUE::Accumulator accumulatorBuffer[MAX_DEPTH];
+
 
     // PRECOMPUTED DATA
     static const std::int_fast16_t PEICE_VALUES[15];
@@ -236,7 +245,7 @@ private:
 
     // update the board based on the inputted move (must be pseudo legal)
     // returns true if move was legal and process completed
-    bool makeMove(Move& move);
+    bool makeMove(Move& move, std::uint_fast8_t plyFromRoot);
 
     // update the board to reverse the inputted move (must have just been move previously played)
     void unmakeMove(Move& move);
@@ -279,7 +288,7 @@ private:
     void resetSearchMembers();
 
     // returns number of total positions a certain depth away
-    std::uint64_t perft_h(std::uint_fast8_t depth, Move* moveStack, std::uint_fast32_t startMoves);
+    std::uint64_t perft_h(std::uint_fast8_t plyFromRoot, std::uint_fast8_t depth, Move* moveStack, std::uint_fast32_t startMoves);
 
     // Standard minimax search
     std::int_fast32_t search_std(std::uint_fast8_t plyFromRoot, std::uint_fast8_t depth, Move* moveStack, std::uint_fast32_t startMoves, std::int_fast32_t alpha, std::int_fast32_t beta);
@@ -288,7 +297,7 @@ private:
     std::int_fast32_t search_quiscence(std::uint_fast8_t plyFromRoot, Move* moveStack, std::uint_fast32_t startMoves, std::int_fast32_t alpha, std::int_fast32_t beta);
 
     // Static evaluation function
-    std::int_fast32_t evaluate();
+    std::int_fast32_t evaluate(std::uint_fast8_t plyFromRoot);
 
     // MOVE ORDERING CLASS
     // Wrapper container for the move stack which handles move ordering

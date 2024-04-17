@@ -23,6 +23,7 @@
 
 typedef std::int_fast8_t int8;
 typedef std::uint_fast8_t uint8;
+typedef std::uint_fast16_t uint16;
 typedef std::int_fast32_t int32;
 typedef std::uint_fast32_t uint32;
 typedef std::uint_fast64_t uint64;
@@ -38,11 +39,13 @@ constexpr int32 REPITIION_EVALUATION = -50;
 // PUBLIC METHODS
 EngineV1_3::EngineV1_3(const std::string& fenString) : ttable(std::make_unique<TranspositionTable>())
 {
+    nnue = NNUE();
     loadFEN(fenString);
 }
 
 EngineV1_3::EngineV1_3() : ttable(std::make_unique<TranspositionTable>())
 {
+    nnue = NNUE();
     loadStartingPosition();
 }
 
@@ -130,7 +133,7 @@ StandardMove EngineV1_3::computerMove(std::chrono::milliseconds thinkTime)
                 break;
             }
 
-            makeMove(move);
+            makeMove(move, 0);
             move.strengthGuess = -search_std(1, depth, moveStack, 0, -MAX_EVAL, -alpha);
             unmakeMove(move);
 
@@ -185,7 +188,10 @@ void EngineV1_3::inputMove(const StandardMove& move)
     for (Move& legalMove : enginePositionMoves) {
         if (legalMove == move) {
 
-            makeMove(legalMove);
+            makeMove(legalMove, 0);
+
+            // throw away the previous accumulator
+            accumulatorBuffer[0] = accumulatorBuffer[1];
 
             enginePositionMoves = legalMoves();
 
@@ -323,8 +329,8 @@ std::uint64_t EngineV1_3::perft(int depth, bool printOut = false) noexcept
             std::cout.flush();
         }
 
-        if (makeMove(enginePositionMoves[i])) {
-            subnodes = perft_h(depth - 1, moveStack, 0);
+        if (makeMove(enginePositionMoves[i], 0)) {
+            subnodes = perft_h(1, depth - 1, moveStack, 0);
             nodes += subnodes;
             unmakeMove(enginePositionMoves[i]);
         }
@@ -366,7 +372,7 @@ std::uint64_t EngineV1_3::search_perft(int depth) noexcept
         // Run search for each move
         for (Move& move : enginePositionMoves) {
 
-            makeMove(move);
+            makeMove(move, 0);
             move.strengthGuess = -search_std(1, d, moveStack, 0, -MAX_EVAL, -alpha);
             unmakeMove(move);
 
@@ -427,7 +433,7 @@ std::uint64_t EngineV1_3::search_perft(std::chrono::milliseconds thinkTime) noex
                 break;
             }
 
-            makeMove(move);
+            makeMove(move, 0);
             move.strengthGuess = -search_std(1, depth, moveStack, 0, -MAX_EVAL, -alpha);
             unmakeMove(move);
 
@@ -453,6 +459,11 @@ std::uint64_t EngineV1_3::search_perft(std::chrono::milliseconds thinkTime) noex
     std::cout << " nodes " << nodes;
     std::cout << " time " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "millis" << std::endl;
     return nodes;
+}
+
+std::int_fast32_t EngineV1_3::testEval()
+{
+    return evaluate(0);
 }
 
 
@@ -835,6 +846,8 @@ void EngineV1_3::initializeFen(const std::string& fenString)
         throw std::invalid_argument(std::string("Invalid FEN full move number! ") + e.what());
     }
 
+    std::vector<uint16> activeFeatures;
+
     // initialize zobrist hash for all of the peices
     for (uint8 i = 0; i < 64; ++i) {
         uint8 peice = peices[i];
@@ -845,8 +858,11 @@ void EngineV1_3::initializeFen(const std::string& fenString)
             material_stage_weight += PEICE_STAGE_WEIGHTS[peice];
             earlygamePositionalMaterialInbalance += EARLYGAME_PEICE_VALUE[peice][i];
             endgamePositionalMaterialInbalance += ENDGAME_PEICE_VALUE[peice][i];
+            activeFeatures.push_back((2 * ((peice & 0b111) - 1) + (peice >> 3)) * 64 + i);
         }
     }
+
+    nnue.refreshAccumulator(accumulatorBuffer[0], activeFeatures);
 
     positionInfo[positionInfoIndex] |= zobrist >> 44;
 
@@ -1661,7 +1677,7 @@ void EngineV1_3::generateCaptures(Move* stack, uint32& idx, bool* pinnedPeices) 
     }
 }
 
-bool EngineV1_3::makeMove(EngineV1_3::Move& move)
+bool EngineV1_3::makeMove(EngineV1_3::Move& move, uint8 plyFromRoot)
 {
     uint8 c = move.moving() >> 3;
     uint8 color = c << 3;
@@ -1715,15 +1731,22 @@ bool EngineV1_3::makeMove(EngineV1_3::Move& move)
 
     // Update zobrist hash, numpieces and positonal imbalance for moving peice
     zobrist ^= ZOBRIST_PEICE_KEYS[c][(move.moving() & 0b111) - 1][move.start()];
+
+    uint16 rem1 = (2 * ((move.moving() & 0b111) - 1) + c) * 64 + move.start();
+    uint16 add1;
+
     if (move.promotion()) {
         zobrist ^= ZOBRIST_PEICE_KEYS[c][move.promotion() - 1][move.target()];
         --numPeices[move.moving()];
         ++numPeices[color + move.promotion()];
         material_stage_weight -= PEICE_STAGE_WEIGHTS[move.moving()];
         material_stage_weight += PEICE_STAGE_WEIGHTS[color + move.promotion()];
+
+        add1 = (2 * (move.promotion() - 1) + c) * 64 + move.target();
     }
     else {
         zobrist ^= ZOBRIST_PEICE_KEYS[c][(move.moving() & 0b111) - 1][move.target()];
+        add1 = (2 * ((move.moving() & 0b111) - 1) + c) * 64 + move.target();
     }
 
 
@@ -1734,6 +1757,12 @@ bool EngineV1_3::makeMove(EngineV1_3::Move& move)
         --numPeices[move.captured()];
         --numTotalPeices[e];
         material_stage_weight -= PEICE_STAGE_WEIGHTS[move.captured()];
+
+        uint16 rem2 = (2 * ((move.captured() & 0b111) - 1) + e) * 64 + captureSquare;
+        nnue.updateAccumulatorCapture(accumulatorBuffer[plyFromRoot], accumulatorBuffer[plyFromRoot + 1], rem1, rem2, add1);
+    }
+    else {
+        nnue.updateAccumulatorMove(accumulatorBuffer[plyFromRoot], accumulatorBuffer[plyFromRoot + 1], rem1, add1);
     }
 
     // Update rooks for castling
@@ -1757,6 +1786,11 @@ bool EngineV1_3::makeMove(EngineV1_3::Move& move)
         peices[rookStart] = 0;
         zobrist ^= ZOBRIST_PEICE_KEYS[c][ROOK - 1][rookStart];
         zobrist ^= ZOBRIST_PEICE_KEYS[c][ROOK - 1][rookEnd];
+
+        uint16 rem2 = (2 * (ROOK - 1) + c) * 64 + rookStart;
+        uint16 add2 = (2 * (ROOK - 1) + c) * 64 + rookEnd;
+        NNUE::Accumulator temp = accumulatorBuffer[plyFromRoot + 1];
+        nnue.updateAccumulatorMove(temp, accumulatorBuffer[plyFromRoot + 1], rem2, add2);
     }
 
     // UPDATE BOARD FLAGS
@@ -2099,7 +2133,7 @@ bool EngineV1_3::isLegal(Move& move)
         return castlingMoveIsLegal(move);
     }
 
-    if (makeMove(move)) {
+    if (makeMove(move, 0)) {
         unmakeMove(move);
         move.setLegalFlag();
         return true;
@@ -2224,7 +2258,7 @@ void EngineV1_3::resetSearchMembers()
 }
 
 //SEARCH/EVAL METHODS
-std::uint64_t EngineV1_3::perft_h(uint8 depth, Move* moveStack, uint32 startMoves)
+std::uint64_t EngineV1_3::perft_h(uint8 plyFromRoot, uint8 depth, Move* moveStack, uint32 startMoves)
 {
     if (depth == 0) {
         return 1ULL;
@@ -2236,8 +2270,8 @@ std::uint64_t EngineV1_3::perft_h(uint8 depth, Move* moveStack, uint32 startMove
     std::uint64_t nodes = 0;
 
     for (uint32 i = startMoves; i < endMoves; ++i) {
-        if (makeMove(moveStack[i])) {
-            nodes += perft_h(depth - 1, moveStack, endMoves);
+        if (makeMove(moveStack[i], plyFromRoot)) {
+            nodes += perft_h(plyFromRoot + 1, depth - 1, moveStack, endMoves);
             unmakeMove(moveStack[i]);
         }
     }
@@ -2303,7 +2337,7 @@ int32 EngineV1_3::search_std(uint8 plyFromRoot, uint8 depth, Move* moveStack, ui
         Move move = Move(this, static_cast<uint8>(ttableEntry.move >> 8), static_cast<uint8>(ttableEntry.move & 0b11111111));
 
         // omit move because it has already been searched
-        if (pseudoLegalMoves.omitMove(move) && makeMove(move)) {
+        if (pseudoLegalMoves.omitMove(move) && makeMove(move, plyFromRoot)) {
             zeroLegalMoves = false;
 
             bestMove = move;
@@ -2330,7 +2364,7 @@ int32 EngineV1_3::search_std(uint8 plyFromRoot, uint8 depth, Move* moveStack, ui
 
     // Main loop
     for (Move& move : pseudoLegalMoves) {
-        if (makeMove(move)) {
+        if (makeMove(move, plyFromRoot)) {
             zeroLegalMoves = false;
 
             int32 eval = -search_std(plyFromRoot + 1, depth - 1, moveStack, endMoves, -beta, -alpha);
@@ -2373,7 +2407,7 @@ int32 EngineV1_3::search_quiscence(uint8 plyFromRoot, Move* moveStack, uint32 st
 
     // CHECK MAX DEPTH
     if (plyFromRoot > MAX_DEPTH) {
-        return evaluate() * colorToMove();
+        return evaluate(plyFromRoot) * colorToMove();
     }
 
     // GENERATE QUISCENCE MOVES
@@ -2388,7 +2422,7 @@ int32 EngineV1_3::search_quiscence(uint8 plyFromRoot, Move* moveStack, uint32 st
         bestEval = -MAX_EVAL;
     }
     else {
-        bestEval = evaluate() * colorToMove();
+        bestEval = evaluate(plyFromRoot) * colorToMove();
 
         if (bestEval >= beta) {
             return bestEval;
@@ -2404,7 +2438,7 @@ int32 EngineV1_3::search_quiscence(uint8 plyFromRoot, Move* moveStack, uint32 st
 
     // SEARCH
     for (Move& move : pseudoLegalMoves) {
-        if (makeMove(move)) {
+        if (makeMove(move, plyFromRoot)) {
             zeroLegalMoves = false;
 
             int32 eval = isDrawByInsufficientMaterial() ? 0 : -search_quiscence(plyFromRoot + 1, moveStack, endMoves, -beta, -alpha);
@@ -2431,14 +2465,16 @@ int32 EngineV1_3::search_quiscence(uint8 plyFromRoot, Move* moveStack, uint32 st
     return bestEval;
 }
 
-int32 EngineV1_3::evaluate()
+int32 EngineV1_3::evaluate(uint8 plyFromRoot)
 {
-    /*
     // Weights
+    static constexpr int8 MATERIAL_WEIGHT = 10;
+    static constexpr int8 POSITIONAL_WEIGHT = 4;
+    static constexpr int8 KING_SAFETY_WEIGHT = 3;
     static constexpr int8 MOBILITY_WEIGHT = 2;
-    static constexpr int8 KING_DISTANCE_WEIGHT = 8;
+    static constexpr int8 KING_DISTANCE_WEIGHT = 2;
 
-    // Mobility values
+    // Mobility value
     static constexpr int8 PAWN_EARLY_MOBILITY_VALUE = 2;
     static constexpr int8 KNIGHT_EARLY_MOBILITY_VALUE = 3;
     static constexpr int8 BISHOP_EARLY_MOBILITY_VALUE = 3;
@@ -2458,10 +2494,9 @@ int32 EngineV1_3::evaluate()
     static constexpr int8 PIN_MOBILITY_PENALTY = 5;
     static constexpr int8 CASTLING_MOBILITY_BONUS = 5;
 
-    */
 
-    int32 earlyGameEvaluation = earlygamePositionalMaterialInbalance;
-    int32 endGameEvaluation = endgamePositionalMaterialInbalance;
+    //int32 earlyGameEvaluation = earlygamePositionalMaterialInbalance;
+    //int32 endGameEvaluation = endgamePositionalMaterialInbalance;
 
     /*
 
@@ -2819,7 +2854,11 @@ int32 EngineV1_3::evaluate()
 
     */
 
-    return (material_stage_weight * earlyGameEvaluation + (128 - material_stage_weight) * endGameEvaluation) / 128;
+    //int32 psqtbEval = (material_stage_weight * earlyGameEvaluation + (128 - material_stage_weight) * endGameEvaluation) / 128;
+
+    //int32 eval = (psqtbEval + nnue.foward(accumulatorBuffer[plyFromRoot])) >> 1;
+
+    return nnue.foward(accumulatorBuffer[plyFromRoot]);
 }
 
 // MOVE ORDERING CLASS

@@ -8,7 +8,7 @@
 #define ENGINE_2_CLASS_NAME EngineV1_3
 #define ENGINE_2_NAME "engine_v1.3"
 #define THINK_TIME 150ms
-#define TOTAL_MATCHES 50
+#define TOTAL_MATCHES 100
 #define BOARD_SIZE 960
 #define LOG_FILE_NAME "games.txt"
 #define OUTPUT_FILE_NAME "results.txt"
@@ -31,7 +31,7 @@
 #define TITLE_HEIGHT 40.0f
 const sf::Vector2f gameSize(960.0f, 960.0f + TITLE_HEIGHT);
 
-static void drawTitle(sf::RenderTarget& target, std::string white, std::string black, int matchNumber) {
+static void drawTitle(sf::RenderTarget& target, std::string white, std::string black, int matchNumber, int whiteWins, int blackWins) {
     static constexpr float DISTANCE_FROM_TOP = 3.0f;
     static constexpr unsigned int TITLE_SIZE = 26U;
 
@@ -53,12 +53,12 @@ static void drawTitle(sf::RenderTarget& target, std::string white, std::string b
     middle.setPosition(titlePos);
 
     // White player
-    sf::Text left(white, font, TITLE_SIZE);
+    sf::Text left(std::to_string(whiteWins) + "  " + white, font, TITLE_SIZE);
     left.setOrigin(left.getGlobalBounds().width, 0.0f);
     left.setPosition(titlePos);
 
     // Black player
-    sf::Text right(black, font, TITLE_SIZE);
+    sf::Text right(black + "  " + std::to_string(blackWins), font, TITLE_SIZE);
     right.setOrigin(-middle.getGlobalBounds().width, 0.0f);
     right.setPosition(titlePos);
 
@@ -141,7 +141,7 @@ int main()
 
             // Update screen
             window.setView(gameView);
-            drawTitle(window, ENGINE_1_NAME, ENGINE_2_NAME, matchNumber);
+            drawTitle(window, ENGINE_1_NAME, ENGINE_2_NAME, matchNumber, engine1Wins, engine2Wins);
             window.draw(board);
             window.display();
 
@@ -157,7 +157,7 @@ int main()
 
             // Update screen
             window.setView(gameView);
-            drawTitle(window, ENGINE_1_NAME, ENGINE_2_NAME, matchNumber);
+            drawTitle(window, ENGINE_1_NAME, ENGINE_2_NAME, matchNumber, engine1Wins, engine2Wins);
             window.draw(board);
             window.display();
 
@@ -209,7 +209,7 @@ int main()
 
             // Update screen
             window.setView(gameView);
-            drawTitle(window, ENGINE_2_NAME, ENGINE_1_NAME, matchNumber);
+            drawTitle(window, ENGINE_2_NAME, ENGINE_1_NAME, matchNumber, engine2Wins, engine1Wins);
             window.draw(board);
             window.display();
 
@@ -225,7 +225,7 @@ int main()
 
             // Update screen
             window.setView(gameView);
-            drawTitle(window, ENGINE_2_NAME, ENGINE_1_NAME, matchNumber);
+            drawTitle(window, ENGINE_2_NAME, ENGINE_1_NAME, matchNumber, engine2Wins, engine1Wins);
             window.draw(board);
             window.display();
 

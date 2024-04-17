@@ -1,11 +1,11 @@
 //////////////////////////////////////////////////////////
 // EDIT THESE VARIABLES
 //////////////////////////////////////////////////////////
-#define STANDARD_ENGINE_HEADER_FILE "EngineV1_1.h"
-#define STANDARD_ENGINE_CLASS_NAME EngineV1_1
-#define ENGINE_NAME "engine_v1.1"
+#define STANDARD_ENGINE_HEADER_FILE "EngineV1_3.h"
+#define STANDARD_ENGINE_CLASS_NAME EngineV1_3
+#define ENGINE_NAME "engine_v1.3"
 #define HUMAN_NAME "human"
-#define THINK_TIME 100ms
+#define THINK_TIME 200ms
 #define BOARD_SIZE 960
 #define LOG_FILE_NAME "log.txt"
 //////////////////////////////////////////////////////////

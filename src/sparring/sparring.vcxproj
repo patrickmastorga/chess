@@ -80,7 +80,7 @@
       <AdditionalIncludeDirectories>C:\C++\SFML-2.6.1\include;$(SolutionDir)base;$(SolutionDir)graphical_board;$(SolutionDir)v1_0;$(SolutionDir)v1_1;$(SolutionDir)v1_2;$(SolutionDir)NNUE;$(SolutionDir)transposition_table;$(SolutionDir)v1_3</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>sfml-graphics-s-d.lib;sfml-window-s-d.lib;sfml-system-s-d.lib;opengl32.lib;freetype.lib;winmm.lib;gdi32.lib;%(AdditionalDependencies);sfml-main-d.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\C++\SFML-2.6.1\lib</AdditionalLibraryDirectories>
@@ -98,7 +98,7 @@
       <AdditionalIncludeDirectories>C:\C++\SFML-2.6.1\include;$(SolutionDir)base;$(SolutionDir)graphical_board;$(SolutionDir)v1_0;$(SolutionDir)v1_1;$(SolutionDir)v1_2;$(SolutionDir)NNUE;$(SolutionDir)transposition_table;$(SolutionDir)v1_3</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -116,7 +116,7 @@
       <AdditionalIncludeDirectories>C:\C++\SFML-2.6.1\include;$(SolutionDir)base;$(SolutionDir)graphical_board;$(SolutionDir)v1_0;$(SolutionDir)v1_1;$(SolutionDir)v1_2;$(SolutionDir)NNUE;$(SolutionDir)transposition_table;$(SolutionDir)v1_3</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>sfml-graphics-s-d.lib;sfml-window-s-d.lib;sfml-system-s-d.lib;opengl32.lib;freetype.lib;winmm.lib;gdi32.lib;%(AdditionalDependencies);sfml-main-d.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\C++\SFML-2.6.1\lib</AdditionalLibraryDirectories>
@@ -134,7 +134,7 @@
       <AdditionalIncludeDirectories>C:\C++\SFML-2.6.1\include;$(SolutionDir)base;$(SolutionDir)graphical_board;$(SolutionDir)v1_0;$(SolutionDir)v1_1;$(SolutionDir)v1_2;$(SolutionDir)NNUE;$(SolutionDir)transposition_table;$(SolutionDir)v1_3</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>

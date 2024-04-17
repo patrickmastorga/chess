@@ -17,12 +17,15 @@ public:
 		std::int16_t vec[NNUE::HIDDEN_1_SIZE];
 	};
 
-	void refreshAccumulator(Accumulator& output, std::vector<std::int_fast16_t>& activeFeatures);
+	// Generate new accumulator from active features
+	void refreshAccumulator(Accumulator& output, std::vector<std::uint_fast16_t>& activeFeatures);
 
-	void updateAccumulator(Accumulator& input, Accumulator& output, std::vector<std::int_fast16_t>& removedFeatures, std::vector<std::int_fast16_t>& addedFeatures);
+	// Update the accumulator for a move
+	void updateAccumulatorMove   (Accumulator& input, Accumulator& output, std::uint_fast16_t rem1, std::uint_fast16_t add1);
+	void updateAccumulatorCapture(Accumulator& input, Accumulator& output, std::uint_fast16_t rem1, std::uint_fast16_t rem2, std::uint_fast16_t add1);
 
 	// Evaluates the neural network and returns the evaluation
-	std::int_fast32_t foward(Accumulator input);
+	std::int_fast32_t foward(Accumulator &input);
 
 private:
 	// Clamps every entry to [0, 127] in the input array and puts the result in the output array
