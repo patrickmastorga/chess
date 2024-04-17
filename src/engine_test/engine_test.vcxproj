@@ -82,7 +82,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)base;$(SolutionDir)v1_0;$(SolutionDir)v1_1;$(SolutionDir)v1_2;$(SolutionDir)NNUE;$(SolutionDir)transposition_table</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)base;$(SolutionDir)v1_0;$(SolutionDir)v1_1;$(SolutionDir)v1_2;$(SolutionDir)NNUE;$(SolutionDir)transposition_table;$(SolutionDir)v1_3</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -99,7 +99,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)base;$(SolutionDir)v1_0;$(SolutionDir)v1_1;$(SolutionDir)v1_2;$(SolutionDir)NNUE;$(SolutionDir)transposition_table</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)base;$(SolutionDir)v1_0;$(SolutionDir)v1_1;$(SolutionDir)v1_2;$(SolutionDir)NNUE;$(SolutionDir)transposition_table;$(SolutionDir)v1_3</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -116,7 +116,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)base;$(SolutionDir)v1_0;$(SolutionDir)v1_1;$(SolutionDir)v1_2;$(SolutionDir)NNUE;$(SolutionDir)transposition_table</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)base;$(SolutionDir)v1_0;$(SolutionDir)v1_1;$(SolutionDir)v1_2;$(SolutionDir)NNUE;$(SolutionDir)transposition_table;$(SolutionDir)v1_3</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -133,7 +133,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)base;$(SolutionDir)v1_0;$(SolutionDir)v1_1;$(SolutionDir)v1_2;$(SolutionDir)NNUE;$(SolutionDir)transposition_table</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)base;$(SolutionDir)v1_0;$(SolutionDir)v1_1;$(SolutionDir)v1_2;$(SolutionDir)NNUE;$(SolutionDir)transposition_table;$(SolutionDir)v1_3</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -161,6 +161,9 @@
     </ProjectReference>
     <ProjectReference Include="..\v1_2\v1_2.vcxproj">
       <Project>{b1886c03-04c8-4c48-9d79-93260d527db2}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\v1_3\v1_3.vcxproj">
+      <Project>{b3a65adc-67e7-4e8c-843c-d2ac0fd0b345}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

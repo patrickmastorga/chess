@@ -77,7 +77,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)base;$(SolutionDir)NNUE;$(SolutionDir)transposition_table</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)base;$(SolutionDir)transposition_table</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -93,7 +93,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)base;$(SolutionDir)NNUE;$(SolutionDir)transposition_table</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)base;$(SolutionDir)transposition_table</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -109,7 +109,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)base;$(SolutionDir)NNUE;$(SolutionDir)transposition_table</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)base;$(SolutionDir)transposition_table</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -125,7 +125,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)base;$(SolutionDir)NNUE;$(SolutionDir)transposition_table</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)base;$(SolutionDir)transposition_table</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -145,9 +145,6 @@
   <ItemGroup>
     <ProjectReference Include="..\base\base.vcxproj">
       <Project>{a5640b1b-10a6-4b86-8cee-02b12c0c713c}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\NNUE\NNUE.vcxproj">
-      <Project>{52c6ebe2-f84a-4f9f-b14d-3e84f34f382a}</Project>
     </ProjectReference>
     <ProjectReference Include="..\transposition_table\transposition_table.vcxproj">
       <Project>{414f746a-ca4c-48b5-9c2b-7a560b917cf9}</Project>

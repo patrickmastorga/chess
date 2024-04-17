@@ -1,12 +1,12 @@
 //////////////////////////////////////////////////////////
 // EDIT THESE VARIABLES
 //////////////////////////////////////////////////////////
-#define ENGINE_1_HEADER_FILE "EngineV1_1.h"
-#define ENGINE_1_CLASS_NAME EngineV1_1
-#define ENGINE_1_NAME "engine_v1.1"
-#define ENGINE_2_HEADER_FILE "EngineV1_2.h"
-#define ENGINE_2_CLASS_NAME EngineV1_2
-#define ENGINE_2_NAME "engine_v1.2"
+#define ENGINE_1_HEADER_FILE "EngineV1_2.h"
+#define ENGINE_1_CLASS_NAME EngineV1_2
+#define ENGINE_1_NAME "engine_v1.2"
+#define ENGINE_2_HEADER_FILE "EngineV1_3.h"
+#define ENGINE_2_CLASS_NAME EngineV1_3
+#define ENGINE_2_NAME "engine_v1.3"
 #define THINK_TIME 150ms
 #define TOTAL_MATCHES 50
 #define BOARD_SIZE 960

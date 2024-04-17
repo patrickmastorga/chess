@@ -1,0 +1,11 @@
+[Event "Sparring Match 1"]
+[Date "2024.04.17"]
+[White "engine_v1.2"]
+[Black "engine_v1.3"]
+[Termination "Normal"]
+[Result "1/2-1/2"]
+[FEN "r2qk2r/1p1nbpp1/p1p1p2p/3n4/3P2P1/2NQ1NBP/PPP2P2/R4RK1 w kq - 4 16"]
+[Varient "From Position"]
+
+1. Ne4 O-O 2. Qb3 Qb6 3. Qxb6 N5xb6 4. Bd6 Bxd6 5. Nxd6 Rab8 6. Ne4 Nc4 7. Rab1 Rbe8 8. b3 Ncb6 9. Nd6 Rb8 10. b4 Nd5 11. Rfe1 Nf4 12. h4 Rfd8 13. Ne4 Nb6 14. g5 hxg5 15. hxg5 Nc4 16. Rbd1 Na3 17. c3 Nc4 18. Nc5 Nb2 19. Ra1 Nc4 20. Re4 Nd5 21. g6 fxg6 22. Rxe6 Nf4 23. Ree1 Nd5 24. Rac1 Nd6 25. Ne5 Nf4 26. Ncd7 Rbc8 27. Nc5 g5 28. c4 Nf5 29. Nxb7 Rxd4 30. Rc2 Re8 31. Kf1 Ne6 32. Nxc6 Rh4 33. Re5 Nfd4 34. Nxd4 Rxd4 35. Nc5 Rd1+ 36. Ke2 Rd6 37. Nxe6 Rdxe6 38. Rxe6 Rxe6+ 39. Kd3 Rb6 40. Rb2 Kf7 41. c5 Rc6 42. Kd4 Kf6 43. b5 axb5 44. Rxb5 Rc8 45. Rb6+ Kf5 46. a3 Rd8+ 47. Ke3 Ra8 48. Rb3 Ke5 49. Kd2 Rf8 50. Ke2 Kd5 51. Rb7 Re8+ 52. Kd3 Ra8 53. Rxg7 Rxa3+ 54. Kd2 Kxc5 55. Rxg5+ Kd4 56. Rg4+ Kd5 57. Rg7 Rb3 58. Ke2 Rc3 59. Rf7 Rb3 60. Re7 Rc3 61. Rd7+ Ke4 62. Kd2 Rf3 63. Ke1 Rb3 64. Kf1 Rc3 65. Re7+ Kf4 66. Ke1 Rc2 67. Rf7+ Ke5 68. Kf1 Ke4 69. Kg2 Rc3 70. Re7+ Kf4 71. Rd7 Ke5 72. Rd2 Kf4 73. Rb2 Ke4 74. Re2+ Kf4 75. Re7 Rc2 76. Rf7+ Kg4 77. Kf1 Ra2 78. f3+ Kg3 79. Ke1 Rb2 80. f4 Kf3 81. f5 Kf4 82. f6 Kf5 83. Rf8 Ke6 84. Kf1 Ke5 85. Ke1 Rc2 86. Kf1 Ke6 87. Ke1 Rg2 88. Kf1 Rh2 89. Ke1 Rc2 90. Kf1 Rb2 91. Ke1 Rh2 92. Kf1 Rh6 93. Kf2 Rxf6+ 94. Rxf6+ Kxf6 1/2-1/2
+

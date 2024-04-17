@@ -21,32 +21,32 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{bcacd7e9-366f-42a2-8635-8d4ec9f7e4ab}</ProjectGuid>
-    <RootNamespace>sparring</RootNamespace>
+    <ProjectGuid>{b3a65adc-67e7-4e8c-843c-d2ac0fd0b345}</ProjectGuid>
+    <RootNamespace>v13</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -74,16 +74,14 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>SFML_STATIC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\C++\SFML-2.6.1\include;$(SolutionDir)base;$(SolutionDir)graphical_board;$(SolutionDir)v1_0;$(SolutionDir)v1_1;$(SolutionDir)v1_2;$(SolutionDir)NNUE;$(SolutionDir)transposition_table;$(SolutionDir)v1_3</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)base;$(SolutionDir)NNUE;$(SolutionDir)transposition_table</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>sfml-graphics-s-d.lib;sfml-window-s-d.lib;sfml-system-s-d.lib;opengl32.lib;freetype.lib;winmm.lib;gdi32.lib;%(AdditionalDependencies);sfml-main-d.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\C++\SFML-2.6.1\lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -92,34 +90,30 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>SFML_STATIC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\C++\SFML-2.6.1\include;$(SolutionDir)base;$(SolutionDir)graphical_board;$(SolutionDir)v1_0;$(SolutionDir)v1_1;$(SolutionDir)v1_2;$(SolutionDir)NNUE;$(SolutionDir)transposition_table;$(SolutionDir)v1_3</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)base;$(SolutionDir)NNUE;$(SolutionDir)transposition_table</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>sfml-graphics-s.lib;sfml-window-s.lib;sfml-system-s.lib;opengl32.lib;freetype.lib;winmm.lib;gdi32.lib;%(AdditionalDependencies);sfml-main.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\C++\SFML-2.6.1\lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>SFML_STATIC;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\C++\SFML-2.6.1\include;$(SolutionDir)base;$(SolutionDir)graphical_board;$(SolutionDir)v1_0;$(SolutionDir)v1_1;$(SolutionDir)v1_2;$(SolutionDir)NNUE;$(SolutionDir)transposition_table;$(SolutionDir)v1_3</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)base;$(SolutionDir)NNUE;$(SolutionDir)transposition_table</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>sfml-graphics-s-d.lib;sfml-window-s-d.lib;sfml-system-s-d.lib;opengl32.lib;freetype.lib;winmm.lib;gdi32.lib;%(AdditionalDependencies);sfml-main-d.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\C++\SFML-2.6.1\lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -128,47 +122,35 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>SFML_STATIC;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\C++\SFML-2.6.1\include;$(SolutionDir)base;$(SolutionDir)graphical_board;$(SolutionDir)v1_0;$(SolutionDir)v1_1;$(SolutionDir)v1_2;$(SolutionDir)NNUE;$(SolutionDir)transposition_table;$(SolutionDir)v1_3</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)base;$(SolutionDir)NNUE;$(SolutionDir)transposition_table</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>sfml-graphics-s.lib;sfml-window-s.lib;sfml-system-s.lib;opengl32.lib;freetype.lib;winmm.lib;gdi32.lib;%(AdditionalDependencies);sfml-main.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\C++\SFML-2.6.1\lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
+    <ClInclude Include="EngineV1_3.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="EngineV1_3.cpp" />
+    <ClCompile Include="precomputed_engine_data.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\base\base.vcxproj">
       <Project>{a5640b1b-10a6-4b86-8cee-02b12c0c713c}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\graphical_board\graphical_board.vcxproj">
-      <Project>{5f5ce7ac-7f17-4ada-8ca8-c96b724fe16c}</Project>
+    <ProjectReference Include="..\NNUE\NNUE.vcxproj">
+      <Project>{52c6ebe2-f84a-4f9f-b14d-3e84f34f382a}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\v1_0\v1_0.vcxproj">
-      <Project>{8fa35276-5a75-4a9a-8ad6-2dbde7010321}</Project>
+    <ProjectReference Include="..\transposition_table\transposition_table.vcxproj">
+      <Project>{414f746a-ca4c-48b5-9c2b-7a560b917cf9}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\v1_1\v1_1.vcxproj">
-      <Project>{b06a93fe-3a17-4718-846f-41f7ab531d6b}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\v1_2\v1_2.vcxproj">
-      <Project>{899c9f00-b2e3-4176-a394-b9182cc04e96}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\v1_3\v1_3.vcxproj">
-      <Project>{b3a65adc-67e7-4e8c-843c-d2ac0fd0b345}</Project>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="games.txt" />
-    <Text Include="results.txt" />
-    <Text Include="sparring_positions.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

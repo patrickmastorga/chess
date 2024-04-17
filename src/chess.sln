@@ -10,10 +10,14 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "base", "base\base.vcxproj", "{A5640B1B-10A6-4B86-8CEE-02B12C0C713C}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "graphical_demo", "graphical_demo\graphical_demo.vcxproj", "{B81C7600-6386-4E53-9229-91FEF8952395}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B3A65ADC-67E7-4E8C-843C-D2AC0FD0B345} = {B3A65ADC-67E7-4E8C-843C-D2AC0FD0B345}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "engine_test", "engine_test\engine_test.vcxproj", "{945B7D76-1757-44F3-A95F-6C783E640506}"
 	ProjectSection(ProjectDependencies) = postProject
 		{899C9F00-B2E3-4176-A394-B9182CC04E96} = {899C9F00-B2E3-4176-A394-B9182CC04E96}
+		{B3A65ADC-67E7-4E8C-843C-D2AC0FD0B345} = {B3A65ADC-67E7-4E8C-843C-D2AC0FD0B345}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "v1_1", "v1_1\v1_1.vcxproj", "{B06A93FE-3A17-4718-846F-41F7AB531D6B}"
@@ -21,12 +25,17 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "graphical_board", "graphical_board\graphical_board.vcxproj", "{5F5CE7AC-7F17-4ADA-8CA8-C96B724FE16C}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "sparring", "sparring\sparring.vcxproj", "{BCACD7E9-366F-42A2-8635-8D4EC9F7E4AB}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B3A65ADC-67E7-4E8C-843C-D2AC0FD0B345} = {B3A65ADC-67E7-4E8C-843C-D2AC0FD0B345}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "v1_2", "v1_2\v1_2.vcxproj", "{899C9F00-B2E3-4176-A394-B9182CC04E96}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NNUE", "NNUE\NNUE.vcxproj", "{52C6EBE2-F84A-4F9F-B14D-3E84F34F382A}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "transposition_table", "transposition_table\transposition_table.vcxproj", "{414F746A-CA4C-48B5-9C2B-7A560B917CF9}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "v1_3", "v1_3\v1_3.vcxproj", "{B3A65ADC-67E7-4E8C-843C-D2AC0FD0B345}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -116,6 +125,14 @@ Global
 		{414F746A-CA4C-48B5-9C2B-7A560B917CF9}.Release|x64.Build.0 = Release|x64
 		{414F746A-CA4C-48B5-9C2B-7A560B917CF9}.Release|x86.ActiveCfg = Release|Win32
 		{414F746A-CA4C-48B5-9C2B-7A560B917CF9}.Release|x86.Build.0 = Release|Win32
+		{B3A65ADC-67E7-4E8C-843C-D2AC0FD0B345}.Debug|x64.ActiveCfg = Debug|x64
+		{B3A65ADC-67E7-4E8C-843C-D2AC0FD0B345}.Debug|x64.Build.0 = Debug|x64
+		{B3A65ADC-67E7-4E8C-843C-D2AC0FD0B345}.Debug|x86.ActiveCfg = Debug|Win32
+		{B3A65ADC-67E7-4E8C-843C-D2AC0FD0B345}.Debug|x86.Build.0 = Debug|Win32
+		{B3A65ADC-67E7-4E8C-843C-D2AC0FD0B345}.Release|x64.ActiveCfg = Release|x64
+		{B3A65ADC-67E7-4E8C-843C-D2AC0FD0B345}.Release|x64.Build.0 = Release|x64
+		{B3A65ADC-67E7-4E8C-843C-D2AC0FD0B345}.Release|x86.ActiveCfg = Release|Win32
+		{B3A65ADC-67E7-4E8C-843C-D2AC0FD0B345}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -124,6 +141,7 @@ Global
 		{8FA35276-5A75-4A9A-8AD6-2DBDE7010321} = {E34BDA63-AFD3-4043-91AB-8ABE5FB9FB6D}
 		{B06A93FE-3A17-4718-846F-41F7AB531D6B} = {E34BDA63-AFD3-4043-91AB-8ABE5FB9FB6D}
 		{899C9F00-B2E3-4176-A394-B9182CC04E96} = {E34BDA63-AFD3-4043-91AB-8ABE5FB9FB6D}
+		{B3A65ADC-67E7-4E8C-843C-D2AC0FD0B345} = {E34BDA63-AFD3-4043-91AB-8ABE5FB9FB6D}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7E5356D0-9B82-4D05-A9C1-D58D6062DF5D}
