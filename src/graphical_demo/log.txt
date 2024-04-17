@@ -1,9 +1,0 @@
-[Event "Graphical Demo Game 1"]
-[Date "2024.04.09"]
-[White "human"]
-[Black "engine_v1.1"]
-[Termination "Forfiet"]
-[Result "0-1"]
-
-1. e4 Nc6 2. Nf3 Nf6 3. Nc3 e5 4. Bd3 d5 0-1
-

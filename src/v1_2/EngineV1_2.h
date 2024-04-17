@@ -2,6 +2,7 @@
 #include "StandardEngine.h"
 #include "PerftTestableEngine.h"
 #include "StandardMove.h"
+#include "TranspositionTable.h"
 
 #include <cstdint>
 #include <optional>
@@ -116,6 +117,8 @@ private:
         // Construct a new Move object from the given board and given flags (en_passant, castle, promotion, etc.)
         Move(const EngineV1_2* board, std::uint_fast8_t start, std::uint_fast8_t target, std::uint_fast8_t givenFlags);
 
+        Move(const EngineV1_2* board, std::uint_fast8_t start, std::uint_fast8_t target);
+
         Move();
 
         // FLAGS
@@ -189,6 +192,9 @@ private:
 
     // Search data
     std::uint_fast32_t nodesSearchedThisMove;
+
+    // Transposition table
+    std::unique_ptr<TranspositionTable> ttable;
 
 
     // PRECOMPUTED DATA
@@ -284,20 +290,25 @@ private:
     // Static evaluation function
     std::int_fast32_t evaluate();
 
-    // returns a heuristic evaluation of the position based on the total material and positions of the peices on the board
-    inline std::int_fast32_t lazyEvaluation() const noexcept;
-
-
     // MOVE ORDERING CLASS
     // Wrapper container for the move stack which handles move ordering
     class MoveOrderer
     {
     public:
-        // Initializes the container by generating heuristic scores for all of the moves in the stack within the bounds
-        MoveOrderer(EngineV1_2* engine, Move* moveStack, std::uint_fast32_t startMoves, std::uint_fast32_t endMoves, Move* skipThisMove = nullptr);
+        // Initializes the container
+        MoveOrderer(Move* moveStack, std::uint_fast32_t startMoves, std::uint_fast32_t endMoves);
 
         // Generates a heuristic guess for how strong a move is based on the current position
         static void generateStrengthGuess(EngineV1_2* engine, Move& move);
+
+        // Generates heuristic scores for all of the moves in the stack within the bounds
+        void initializeStrengthGuesses(EngineV1_2* engine);
+
+        // Omits a move from the container; returns true if move was found
+        bool omitMove(Move& move);
+
+        // Returns true if the inputted move is on the move stack within the bounds
+        bool contains(Move& move);
 
         class Iterator {
         public:
@@ -322,9 +333,9 @@ private:
         inline Iterator end();
 
     private:
-        std::uint_fast32_t startMoves;
+        std::uint_fast32_t startBounds;
 
-        std::uint_fast32_t endMoves;
+        std::uint_fast32_t endBounds;
 
         Move* moveStack;
     };

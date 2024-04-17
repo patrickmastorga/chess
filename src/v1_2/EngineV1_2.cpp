@@ -19,6 +19,7 @@
 #include "StandardMove.h"
 #include "precomputed_chess_data.h"
 #include "chesshelpers.h"
+#include "TranspositionTable.h"
 
 typedef std::int_fast8_t int8;
 typedef std::uint_fast8_t uint8;
@@ -26,7 +27,7 @@ typedef std::int_fast32_t int32;
 typedef std::uint_fast32_t uint32;
 typedef std::uint_fast64_t uint64;
 
-constexpr int32 MAX_EVAL = INT32_MAX;
+constexpr int32 MAX_EVAL = INT16_MAX;
 constexpr int32 MATE_CUTOFF = MAX_EVAL - MAX_DEPTH;
 
 // Prevents computer from always choosing threefold repitition
@@ -35,12 +36,12 @@ constexpr int32 REPITIION_EVALUATION = -50;
 // TODO add some sort of protection for games with halfmove counter > 500
 
 // PUBLIC METHODS
-EngineV1_2::EngineV1_2(const std::string& fenString)
+EngineV1_2::EngineV1_2(const std::string& fenString) : ttable(std::make_unique<TranspositionTable>())
 {
     loadFEN(fenString);
 }
 
-EngineV1_2::EngineV1_2()
+EngineV1_2::EngineV1_2() : ttable(std::make_unique<TranspositionTable>())
 {
     loadStartingPosition();
 }
@@ -74,7 +75,6 @@ int EngineV1_2::colorToMove() noexcept
 StandardMove EngineV1_2::computerMove(std::chrono::milliseconds thinkTime)
 {
     if (gameOver().has_value()) {
-        throw std::runtime_error("Game is over, cannot get computer move!");
     }
 
     if (enginePositionMoves.size() == 1) {
@@ -102,12 +102,12 @@ StandardMove EngineV1_2::computerMove(std::chrono::milliseconds thinkTime)
 
     // Incrementally increase depth until time is up
     uint8 depth = 0;
-    for (;; ++depth) {
+    for (; depth < MAX_DEPTH - 1; ++depth) {
         // Calculate the cutoff time to halt search based on last search
         auto searchCutoff = endSearch - lastSearchDuration * 1.25;
         auto start = std::chrono::high_resolution_clock::now();
 
-        //        std::cout << "depth " << (int)depth + 1;
+        //std::cout << "depth " << (int)depth + 1;
 
         uint32 nodesSearchedBeforeThisIteration = nodesSearchedThisMove;
 
@@ -126,7 +126,7 @@ StandardMove EngineV1_2::computerMove(std::chrono::milliseconds thinkTime)
         // Run search for each move
         for (Move& move : enginePositionMoves) {
             if (std::chrono::high_resolution_clock::now() > searchCutoff) {
-                //                std::cout << " timeout";
+                //std::cout << " timeout";
                 break;
             }
 
@@ -141,16 +141,16 @@ StandardMove EngineV1_2::computerMove(std::chrono::milliseconds thinkTime)
 
         // Sort moves in order by score
         std::stable_sort(enginePositionMoves.begin(), enginePositionMoves.end(), [](const Move& l, const Move& r) { return l.strengthGuess > r.strengthGuess; });
-        //        std::cout << " bestmove " << enginePositionMoves[0].toString();
+        //std::cout << " bestmove " << enginePositionMoves[0].toString();
 
-        //        std::cout << " nodes " << nodesSearchedThisMove - nodesSearchedBeforeThisIteration;
+        //std::cout << " nodes " << nodesSearchedThisMove - nodesSearchedBeforeThisIteration;
 
         auto end = std::chrono::high_resolution_clock::now();
         lastSearchDuration = end - start;
         totalSearchTime += std::chrono::duration_cast<std::chrono::milliseconds>(lastSearchDuration);
-        //        std::cout << " time " << std::chrono::duration_cast<std::chrono::milliseconds>(lastSearchDuration).count() << "millis" << std::endl;
+        //std::cout << " time " << std::chrono::duration_cast<std::chrono::milliseconds>(lastSearchDuration).count() << "millis" << std::endl;
 
-                // Fastest mate is already found
+        // Fastest mate is already found
         if (std::abs(enginePositionMoves[0].strengthGuess) >= MATE_CUTOFF) {
             break;
         }
@@ -571,6 +571,22 @@ EngineV1_2::Move::Move(const EngineV1_2* board, uint8 start, uint8 target, uint8
     }
 }
 
+EngineV1_2::Move::Move(const EngineV1_2* board, uint8 start, uint8 target) : startSquare(start), targetSquare(target), flags(NONE), strengthGuess(0), posmatInit(false), earlyPosmat(0), endPosmat(0)
+{
+    movingPeice = board->peices[start];
+    capturedPeice = board->peices[target];
+    if ((movingPeice & 0b111) == PAWN && target == board->eligibleEnpassantSquare()) {
+        flags |= EN_PASSANT;
+        capturedPeice = enemy() + PAWN;
+    }
+    else if ((movingPeice & 0b111) == PAWN && ((target >> 3) == 0 || (target >> 3) == 7)) {
+        flags |= (QUEEN + PROMOTION);
+    }
+    else if ((movingPeice & 0b111) == KING && std::abs(start - target) == 2) {
+        flags |= CASTLE;
+    }
+}
+
 EngineV1_2::Move::Move() : startSquare(0), targetSquare(0), movingPeice(0), capturedPeice(0), flags(0), strengthGuess(0), posmatInit(false), earlyPosmat(0), endPosmat(0) {}
 
 // PRIVATE METHODS
@@ -638,6 +654,8 @@ void EngineV1_2::initializeFen(const std::string& fenString)
     endgamePositionalMaterialInbalance = 0;
 
     resetSearchMembers();
+
+    ttable->clear();
 
     for (uint8 i = 0; i < MAX_DEPTH + 50; ++i) {
         positionInfo[i] = 0;
@@ -1129,7 +1147,7 @@ moveGeneration:
                 if ((color == WHITE && t >> 3 >= 2) || (color == BLACK && t >> 3 <= 5)) {
                     uint8 file = t % 8;
                     uint8 ahead = t - 8 + 16 * c;
-                    bool promotion = t >> 3 == 0 || t >> 3 == 7;
+                    bool promotion = (t >> 3) == 0 || (t >> 3) == 7;
                     // Pawn capture
                     if (peices[t] && peices[t] >> 3 == e) {
                         if (file != 0 && peices[ahead - 1] == color + PAWN && !isPinned[ahead - 1]) {
@@ -2238,20 +2256,79 @@ int32 EngineV1_2::search_std(uint8 plyFromRoot, uint8 depth, Move* moveStack, ui
     if (repititionOcurred()) {
         return -REPITIION_EVALUATION;
     }
+
+    // Get transposition table entry
+    TranspositionTable::Entry ttableEntry = ttable->getEntry(zobrist);
+    bool ttableEntryValid = ttableEntry.isHit(zobrist);
+
+    // Extract information from stored evaluation
+    if (ttableEntryValid && ttableEntry.depth() >= depth) {
+
+        if (ttableEntry.info & ttableEntry.EXACT_VALUE) {
+            return ttableEntry.eval;
+        }
+        else if (ttableEntry.info & ttableEntry.LOWER_BOUND) {
+            if (ttableEntry.eval > alpha) {
+                alpha = ttableEntry.eval;
+            }
+        }
+        else {
+            if (ttableEntry.eval < beta) {
+                beta = ttableEntry.eval;
+            }
+        }
+
+        if (alpha >= beta) {
+            return ttableEntry.eval;
+        }
+    }
+
     if (depth == 0) {
         return search_quiscence(plyFromRoot, moveStack, startMoves, alpha, beta);
     }
 
-    // GENERATE/ORDER MOVES
-    uint32 endMoves = startMoves;
-    bool inCheck = generatePseudoLegalMoves(moveStack, endMoves);
-    MoveOrderer pseudoLegalMoves(this, moveStack, startMoves, endMoves);
-
-    // COMPUTE EVALUATION
-    int32 best_eval = -MAX_EVAL;
-    //int32 originalAplha = alpha;
+    // BEGIN SEARCH
+    int32 bestEval = -MAX_EVAL;
+    Move bestMove;
+    uint32 evalType = ttableEntry.UPPER_BOUND;
     bool zeroLegalMoves = true;
 
+    // GENERATE MOVES
+    uint32 endMoves = startMoves;
+    bool inCheck = generatePseudoLegalMoves(moveStack, endMoves);
+    MoveOrderer pseudoLegalMoves(moveStack, startMoves, endMoves);
+
+    // Search the stored transposition table move first
+    if (ttableEntryValid && ttableEntry.move) {
+        Move move = Move(this, static_cast<uint8>(ttableEntry.move >> 8), static_cast<uint8>(ttableEntry.move & 0b11111111));
+
+        // omit move because it has already been searched
+        if (pseudoLegalMoves.omitMove(move) && makeMove(move)) {
+            zeroLegalMoves = false;
+
+            bestMove = move;
+            bestEval = -search_std(plyFromRoot + 1, depth - 1, moveStack, endMoves, -beta, -alpha);
+
+            unmakeMove(move);
+
+            if (bestEval >= beta) {
+                if (!ttableEntryValid || depth > ttableEntry.depth()) {
+                    ttable->storeEntry(TranspositionTable::Entry(zobrist, depth, beta, ttableEntry.LOWER_BOUND, bestMove.start(), bestMove.target()), zobrist);
+                }
+                return beta; // Cut node (lower bound)
+            }
+
+            if (bestEval > alpha) {
+                alpha = bestEval;
+                evalType = ttableEntry.EXACT_VALUE;
+            }
+        }
+    }
+
+    // Sort moves
+    pseudoLegalMoves.initializeStrengthGuesses(this);
+
+    // Main loop
     for (Move& move : pseudoLegalMoves) {
         if (makeMove(move)) {
             zeroLegalMoves = false;
@@ -2261,13 +2338,19 @@ int32 EngineV1_2::search_std(uint8 plyFromRoot, uint8 depth, Move* moveStack, ui
             unmakeMove(move);
 
             if (eval >= beta) {
-                return eval; // Cut node (lower bound)
+                if (!ttableEntryValid || depth > ttableEntry.depth()) {
+                    ttable->storeEntry(TranspositionTable::Entry(zobrist, depth, beta, ttableEntry.LOWER_BOUND, bestMove.start(), bestMove.target()), zobrist);
+                }
+                return beta; // Cut node (lower bound)
             }
-            if (eval > best_eval) {
-                best_eval = eval;
+
+            if (eval > bestEval) {
+                bestMove = move;
+                bestEval = eval;
 
                 if (eval > alpha) {
                     alpha = eval;
+                    evalType = ttableEntry.EXACT_VALUE;
                 }
             }
         }
@@ -2277,9 +2360,11 @@ int32 EngineV1_2::search_std(uint8 plyFromRoot, uint8 depth, Move* moveStack, ui
         return inCheck ? -(MAX_EVAL - plyFromRoot) : 0;
     }
 
-    //if (alpha == originalAplha) All Node (upper bound)
+    if (!ttableEntryValid || depth > ttableEntry.depth()) {
+        ttable->storeEntry(TranspositionTable::Entry(zobrist, depth, bestEval, evalType, bestMove.start(), bestMove.target()), zobrist);
+    }
 
-    return best_eval; // PV node (exact value)
+    return bestEval;
 }
 
 int32 EngineV1_2::search_quiscence(uint8 plyFromRoot, Move* moveStack, uint32 startMoves, int32 alpha, int32 beta)
@@ -2296,25 +2381,26 @@ int32 EngineV1_2::search_quiscence(uint8 plyFromRoot, Move* moveStack, uint32 st
     bool inCheck = generatePseudoLegalMoves(moveStack, endMoves, true);
 
     // STATIC EVALUATION
-    int32 best_eval;
+    int32 bestEval;
     bool zeroLegalMoves = true;
 
     if (inCheck) {
-        best_eval = -MAX_EVAL;
+        bestEval = -MAX_EVAL;
     }
     else {
-        best_eval = evaluate() * colorToMove();
+        bestEval = evaluate() * colorToMove();
 
-        if (best_eval >= beta) {
-            return best_eval;
+        if (bestEval >= beta) {
+            return bestEval;
         }
-        if (best_eval > alpha) {
-            alpha = best_eval;
+        if (bestEval > alpha) {
+            alpha = bestEval;
         }
     }
 
     // ORDER MOVES
-    MoveOrderer pseudoLegalMoves(this, moveStack, startMoves, endMoves);
+    MoveOrderer pseudoLegalMoves(moveStack, startMoves, endMoves);
+    pseudoLegalMoves.initializeStrengthGuesses(this);
 
     // SEARCH
     for (Move& move : pseudoLegalMoves) {
@@ -2328,8 +2414,8 @@ int32 EngineV1_2::search_quiscence(uint8 plyFromRoot, Move* moveStack, uint32 st
             if (eval >= beta) {
                 return eval;
             }
-            if (eval > best_eval) {
-                best_eval = eval;
+            if (eval > bestEval) {
+                bestEval = eval;
 
                 if (eval > alpha) {
                     alpha = eval;
@@ -2342,33 +2428,429 @@ int32 EngineV1_2::search_quiscence(uint8 plyFromRoot, Move* moveStack, uint32 st
         return -(MAX_EVAL - plyFromRoot);
     }
 
-    return best_eval;
+    return bestEval;
 }
 
 int32 EngineV1_2::evaluate()
 {
-    return lazyEvaluation();
-}
+    /*
+    // Weights
+    static constexpr int8 MOBILITY_WEIGHT = 2;
+    static constexpr int8 KING_DISTANCE_WEIGHT = 8;
 
-inline int32 EngineV1_2::lazyEvaluation() const noexcept
-{
-    return (material_stage_weight * earlygamePositionalMaterialInbalance + (128 - material_stage_weight) * endgamePositionalMaterialInbalance) / 128;
-}
+    // Mobility values
+    static constexpr int8 PAWN_EARLY_MOBILITY_VALUE = 2;
+    static constexpr int8 KNIGHT_EARLY_MOBILITY_VALUE = 3;
+    static constexpr int8 BISHOP_EARLY_MOBILITY_VALUE = 3;
+    static constexpr int8 ROOK_HORIZONTAL_EARLY_MOBILITY_VALUE = 2;
+    static constexpr int8 ROOK_VERTICAL_EARLY_MOBILITY_VALUE = 4;
+    static constexpr int8 QUEEN_EARLY_MOBILITY_VALUE = 0;
+    static constexpr int8 KING_EARLY_MOBILITY_VALUE = -4;
 
-// MOVE ORDERING CLASS
-EngineV1_2::MoveOrderer::MoveOrderer(EngineV1_2* engine, Move* moveStack, uint32 startMoves, uint32 endMoves, Move* skipThisMove) : moveStack(moveStack), startMoves(startMoves), endMoves(endMoves)
-{
-    if (skipThisMove != nullptr) {
-        for (uint32 i = startMoves; i < endMoves; ++i) {
-            if (moveStack[i] == *skipThisMove) {
-                std::swap(moveStack[i], moveStack[--endMoves]);
+    static constexpr int8 PAWN_END_MOBILITY_VALUE = 3;
+    static constexpr int8 KNIGHT_END_MOBILITY_VALUE = 2;
+    static constexpr int8 BISHOP_END_MOBILITY_VALUE = 2;
+    static constexpr int8 ROOK_HORIZONTAL_END_MOBILITY_VALUE = 3;
+    static constexpr int8 ROOK_VERTICAL_END_MOBILITY_VALUE = 3;
+    static constexpr int8 QUEEN_END_MOBILITY_VALUE = 2;
+    static constexpr int8 KING_END_MOBILITY_VALUE = 0;
+
+    static constexpr int8 PIN_MOBILITY_PENALTY = 5;
+    static constexpr int8 CASTLING_MOBILITY_BONUS = 5;
+
+    */
+
+    int32 earlyGameEvaluation = earlygamePositionalMaterialInbalance;
+    int32 endGameEvaluation = endgamePositionalMaterialInbalance;
+
+    /*
+
+    // Endgame: king distance from center
+    int whiteRank = kingIndex[0] >> 3;
+    int whiteFIle = kingIndex[0] & 0b111;
+    int blackRank = kingIndex[1] >> 3;
+    int blackFIle = kingIndex[1] & 0b111;
+
+    endGameEvaluation -= KING_DISTANCE_WEIGHT * (std::max(whiteRank, 7 - whiteRank) + std::max(whiteFIle, 7 - whiteFIle));
+    endGameEvaluation += KING_DISTANCE_WEIGHT * (std::max(blackRank, 7 - blackFIle) + std::max(blackFIle, 7 - blackFIle));
+
+    // Mobility score
+    int32 earlyGameMobility = 0;
+    int32 endGameMobility = 0;
+
+    // Used later to ignore mobility of pinned peices
+    bool isPinned[64] = { 0 };
+
+    // Calculate pins / king safety for each color
+    for (uint8 c = 0; c <= 1; c++) {
+        int8 side = 1 - 2 * c;
+        uint8 e = !c;
+        uint8 enemy = e << 3;
+        uint8 king = kingIndex[c];
+
+        // Look in each direction from king and calculate pins
+        uint8 potentialPin = 0;
+        for (int8 j = king - 8; j >= DIRECTION_BOUNDS[king][B]; j -= 8) {
+            if (!peices[j]) {
+                continue;
+            }
+            if (!potentialPin && peices[j] >> 3 == c) {
+                potentialPin = j;
+                continue;
+            }
+            if (potentialPin && (peices[j] == enemy + ROOK || peices[j] == enemy + QUEEN)) {
+                isPinned[potentialPin] = true;
+                earlyGameMobility -= side * PIN_MOBILITY_PENALTY;
+                endGameMobility -= side * PIN_MOBILITY_PENALTY;
+            }
+            break;
+        }
+
+        potentialPin = 0;
+        for (int8 j = king + 8; j <= DIRECTION_BOUNDS[king][F]; j += 8) {
+            if (!peices[j]) {
+                continue;
+            }
+            if (!potentialPin && peices[j] >> 3 == c) {
+                potentialPin = j;
+                continue;
+            }
+            if (potentialPin && (peices[j] == enemy + ROOK || peices[j] == enemy + QUEEN)) {
+                isPinned[potentialPin] = true;
+                earlyGameMobility -= side * PIN_MOBILITY_PENALTY;
+                endGameMobility -= side * PIN_MOBILITY_PENALTY;
+            }
+            break;
+        }
+
+        potentialPin = 0;
+        for (int8 j = king - 1; j >= DIRECTION_BOUNDS[king][L]; j -= 1) {
+            if (!peices[j]) {
+                continue;
+            }
+            if (!potentialPin && peices[j] >> 3 == c) {
+                potentialPin = j;
+                continue;
+            }
+            if (potentialPin && (peices[j] == enemy + ROOK || peices[j] == enemy + QUEEN)) {
+                isPinned[potentialPin] = true;
+                earlyGameMobility -= side * PIN_MOBILITY_PENALTY;
+                endGameMobility -= side * PIN_MOBILITY_PENALTY;
+            }
+            break;
+        }
+
+        potentialPin = 0;
+        for (int8 j = king + 1; j <= DIRECTION_BOUNDS[king][R]; j += 1) {
+            if (!peices[j]) {
+                continue;
+            }
+            if (!potentialPin && peices[j] >> 3 == c) {
+                potentialPin = j;
+                continue;
+            }
+            if (potentialPin && (peices[j] == enemy + ROOK || peices[j] == enemy + QUEEN)) {
+                isPinned[potentialPin] = true;
+                earlyGameMobility -= side * PIN_MOBILITY_PENALTY;
+                endGameMobility -= side * PIN_MOBILITY_PENALTY;
+            }
+            break;
+        }
+
+        potentialPin = 0;
+        for (int8 j = king - 9; j >= DIRECTION_BOUNDS[king][BL]; j -= 9) {
+            if (!peices[j]) {
+                continue;
+            }
+            if (!potentialPin && peices[j] >> 3 == c) {
+                potentialPin = j;
+                continue;
+            }
+            if (potentialPin && (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN)) {
+                isPinned[potentialPin] = true;
+                earlyGameMobility -= side * PIN_MOBILITY_PENALTY;
+                endGameMobility -= side * PIN_MOBILITY_PENALTY;
+            }
+            break;
+        }
+
+        potentialPin = 0;
+        for (int8 j = king + 9; j <= DIRECTION_BOUNDS[king][FR]; j += 9) {
+            if (!peices[j]) {
+                continue;
+            }
+            if (!potentialPin && peices[j] >> 3 == c) {
+                potentialPin = j;
+                continue;
+            }
+            if (potentialPin && (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN)) {
+                isPinned[potentialPin] = true;
+                earlyGameMobility -= side * PIN_MOBILITY_PENALTY;
+                endGameMobility -= side * PIN_MOBILITY_PENALTY;
+            }
+            break;
+        }
+
+        potentialPin = 0;
+        for (int8 j = king - 7; j >= DIRECTION_BOUNDS[king][BR]; j -= 7) {
+            if (!peices[j]) {
+                continue;
+            }
+            if (!potentialPin && peices[j] >> 3 == c) {
+                potentialPin = j;
+                continue;
+            }
+            if (potentialPin && (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN)) {
+                isPinned[potentialPin] = true;
+                earlyGameMobility -= side * PIN_MOBILITY_PENALTY;
+                endGameMobility -= side * PIN_MOBILITY_PENALTY;
+            }
+            break;
+        }
+
+        potentialPin = 0;
+        for (int8 j = king + 7; j <= DIRECTION_BOUNDS[king][FL]; j += 7) {
+            if (!peices[j]) {
+                continue;
+            }
+            if (!potentialPin && peices[j] >> 3 == c) {
+                potentialPin = j;
+                continue;
+            }
+            if (potentialPin && (peices[j] == enemy + BISHOP || peices[j] == enemy + QUEEN)) {
+                isPinned[potentialPin] = true;
+                earlyGameMobility -= side * PIN_MOBILITY_PENALTY;
+                endGameMobility -= side * PIN_MOBILITY_PENALTY;
+            }
+            break;
+        }
+
+        // Castling
+        if (!kingsideCastlingRightsLost[c]) {
+            uint8 castlingRank = 56 * c;
+            bool roomToCastle = true;
+            for (uint8 j = castlingRank + 5; j < castlingRank + 7; ++j) {
+                if (peices[j]) {
+                    roomToCastle = false;
+                    break;
+                }
+            }
+            if (roomToCastle) {
+                earlyGameMobility += side * CASTLING_MOBILITY_BONUS;
+            }
+        }
+        if (!queensideCastlingRightsLost[c]) {
+            uint8 castlingRank = 56 * c;
+            bool roomToCastle = true;
+            for (uint8 j = castlingRank + 3; j > castlingRank; --j) {
+                if (peices[j]) {
+                    roomToCastle = false;
+                    break;
+                }
+            }
+            if (roomToCastle) {
+                earlyGameMobility += side * CASTLING_MOBILITY_BONUS;
             }
         }
     }
 
-    for (uint32 i = startMoves; i < endMoves; ++i) {
+    // Calculate mobility score for every peice
+    for (uint8 s = 0; s < 64; ++s) {
+        if (peices[s] && !isPinned[s]) {
+            uint8 c = peices[s] >> 3;
+            int8 side = 1 - 2 * c;
+
+            switch (peices[s] & 0b111) {
+            case PAWN: {
+                uint8 file = s % 8;
+                uint8 ahead = s + 8 - 16 * c;
+
+                // Pawn foward moves
+                if (!peices[ahead]) {
+                    earlyGameMobility += side * PAWN_EARLY_MOBILITY_VALUE;
+                    endGameMobility += side * PAWN_END_MOBILITY_VALUE;
+                }
+
+                // Pawn captures/defends
+                if (file != 0 && peices[ahead - 1]) {
+                    earlyGameMobility += side * PAWN_EARLY_MOBILITY_VALUE;
+                    endGameMobility += side * PAWN_END_MOBILITY_VALUE;
+                }
+                if (file != 7 && peices[ahead + 1]) {
+                    earlyGameMobility += side * PAWN_EARLY_MOBILITY_VALUE;
+                    endGameMobility += side * PAWN_END_MOBILITY_VALUE;
+                }
+                break;
+            }
+            case KNIGHT: {
+                earlyGameMobility += side * (KNIGHT_MOVES[s][0] - 1) * KNIGHT_EARLY_MOBILITY_VALUE;
+                endGameMobility += side * (KNIGHT_MOVES[s][0] - 1) * KNIGHT_END_MOBILITY_VALUE;
+                break;
+            }
+            case ROOK: {
+                for (int8 t = s - 8; t >= DIRECTION_BOUNDS[s][B]; t -= 8) {
+                    earlyGameMobility += side * ROOK_VERTICAL_EARLY_MOBILITY_VALUE;
+                    endGameMobility += side * ROOK_VERTICAL_END_MOBILITY_VALUE;
+                    if (peices[t]) {
+                        break;
+                    }
+                }
+
+                for (int8 t = s + 8; t <= DIRECTION_BOUNDS[s][F]; t += 8) {
+                    earlyGameMobility += side * ROOK_VERTICAL_EARLY_MOBILITY_VALUE;
+                    endGameMobility += side * ROOK_VERTICAL_END_MOBILITY_VALUE;
+                    if (peices[t]) {
+                        break;
+                    }
+                }
+
+                for (int8 t = s - 1; t >= DIRECTION_BOUNDS[s][L]; t -= 1) {
+                    earlyGameMobility += side * ROOK_HORIZONTAL_EARLY_MOBILITY_VALUE;
+                    endGameMobility += side * ROOK_HORIZONTAL_END_MOBILITY_VALUE;
+                    if (peices[t]) {
+                        break;
+                    }
+                }
+
+                for (int8 t = s + 1; t <= DIRECTION_BOUNDS[s][R]; t += 1) {
+                    earlyGameMobility += side * ROOK_HORIZONTAL_EARLY_MOBILITY_VALUE;
+                    endGameMobility += side * ROOK_HORIZONTAL_END_MOBILITY_VALUE;
+                    if (peices[t]) {
+                        break;
+                    }
+                }
+                break;
+            }
+            case BISHOP:
+            case QUEEN:
+            case KING: {
+                int8 early_mobility_value;
+                int8 end_mobility_value;
+                switch (peices[s] & 0b111) {
+                case BISHOP:
+                    early_mobility_value = BISHOP_EARLY_MOBILITY_VALUE;
+                    end_mobility_value = BISHOP_END_MOBILITY_VALUE;
+                    break;
+                case QUEEN:
+                    early_mobility_value = QUEEN_EARLY_MOBILITY_VALUE;
+                    end_mobility_value = QUEEN_END_MOBILITY_VALUE;
+                    break;
+                case KING:
+                    early_mobility_value = KING_EARLY_MOBILITY_VALUE;
+                    end_mobility_value = KING_END_MOBILITY_VALUE;
+                }
+
+
+                for (int8 t = s - 9; t >= DIRECTION_BOUNDS[s][BL]; t -= 9) {
+                    earlyGameMobility += side * early_mobility_value;
+                    endGameMobility += side * end_mobility_value;
+                    if (peices[t]) {
+                        break;
+                    }
+                }
+
+                for (int8 t = s + 9; t <= DIRECTION_BOUNDS[s][FR]; t += 9) {
+                    earlyGameMobility += side * early_mobility_value;
+                    endGameMobility += side * end_mobility_value;
+                    if (peices[t]) {
+                        break;
+                    }
+                }
+
+                for (int8 t = s - 7; t >= DIRECTION_BOUNDS[s][BR]; t -= 7) {
+                    earlyGameMobility += side * early_mobility_value;
+                    endGameMobility += side * end_mobility_value;
+                    if (peices[t]) {
+                        break;
+                    }
+                }
+
+                for (int8 t = s + 7; t <= DIRECTION_BOUNDS[s][FL]; t += 7) {
+                    earlyGameMobility += side * early_mobility_value;
+                    endGameMobility += side * end_mobility_value;
+                    if (peices[t]) {
+                        break;
+                    }
+                }
+
+                if ((peices[s] & 0b111) == BISHOP) {
+                    break;
+                }
+
+                for (int8 t = s - 8; t >= DIRECTION_BOUNDS[s][B]; t -= 8) {
+                    earlyGameMobility += side * early_mobility_value;
+                    endGameMobility += side * end_mobility_value;
+                    if (peices[t]) {
+                        break;
+                    }
+                }
+
+                for (int8 t = s + 8; t <= DIRECTION_BOUNDS[s][F]; t += 8) {
+                    earlyGameMobility += side * early_mobility_value;
+                    endGameMobility += side * end_mobility_value;
+                    if (peices[t]) {
+                        break;
+                    }
+                }
+
+                for (int8 t = s - 1; t >= DIRECTION_BOUNDS[s][L]; t -= 1) {
+                    earlyGameMobility += side * early_mobility_value;
+                    endGameMobility += side * end_mobility_value;
+                    if (peices[t]) {
+                        break;
+                    }
+                }
+
+                for (int8 t = s + 1; t <= DIRECTION_BOUNDS[s][R]; t += 1) {
+                    earlyGameMobility += side * early_mobility_value;
+                    endGameMobility += side * end_mobility_value;
+                    if (peices[t]) {
+                        break;
+                    }
+                }
+                break;
+            }
+            }
+        }
+    }
+
+    earlyGameEvaluation += MOBILITY_WEIGHT * earlyGameMobility;
+    endGameEvaluation += MOBILITY_WEIGHT * endGameMobility;
+
+    */
+
+    return (material_stage_weight * earlyGameEvaluation + (128 - material_stage_weight) * endGameEvaluation) / 128;
+}
+
+// MOVE ORDERING CLASS
+EngineV1_2::MoveOrderer::MoveOrderer(Move* moveStack, uint32 startMoves, uint32 endMoves) : moveStack(moveStack), startBounds(startMoves), endBounds(endMoves) {}
+
+void EngineV1_2::MoveOrderer::initializeStrengthGuesses(EngineV1_2* engine)
+{
+    for (uint32 i = startBounds; i < endBounds; ++i) {
         generateStrengthGuess(engine, moveStack[i]);
     }
+}
+
+bool EngineV1_2::MoveOrderer::omitMove(Move& move)
+{
+    for (uint32 i = startBounds; i < endBounds; ++i) {
+        if (moveStack[i] == move) {
+            std::swap(moveStack[i], moveStack[--endBounds]);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool EngineV1_2::MoveOrderer::contains(Move& move)
+{
+    for (uint32 i = startBounds; i < endBounds; ++i) {
+        if (moveStack[i] == move) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void EngineV1_2::MoveOrderer::generateStrengthGuess(EngineV1_2* engine, EngineV1_2::Move& move)
@@ -2399,26 +2881,26 @@ void EngineV1_2::MoveOrderer::generateStrengthGuess(EngineV1_2* engine, EngineV1
 
 EngineV1_2::MoveOrderer::Iterator EngineV1_2::MoveOrderer::begin()
 {
-    uint32 maxIndex = startMoves;
-    int32 maxStrength = moveStack[startMoves].strengthGuess;
+    uint32 maxIndex = startBounds;
+    int32 maxStrength = moveStack[startBounds].strengthGuess;
 
-    for (uint32 i = startMoves + 1; i < endMoves; ++i) {
+    for (uint32 i = startBounds + 1; i < endBounds; ++i) {
         if (moveStack[i].strengthGuess > maxStrength) {
             maxStrength = moveStack[i].strengthGuess;
             maxIndex = i;
         }
     }
 
-    if (maxIndex != startMoves) {
-        std::swap(moveStack[startMoves], moveStack[maxIndex]);
+    if (maxIndex != startBounds) {
+        std::swap(moveStack[startBounds], moveStack[maxIndex]);
     }
 
-    return Iterator(moveStack + startMoves, endMoves - startMoves, 0);
+    return Iterator(moveStack + startBounds, endBounds - startBounds, 0);
 }
 
 inline EngineV1_2::MoveOrderer::Iterator EngineV1_2::MoveOrderer::end()
 {
-    return Iterator(moveStack + startMoves, endMoves - startMoves, endMoves - startMoves);
+    return Iterator(moveStack + startBounds, endBounds - startBounds, endBounds - startBounds);
 }
 
 inline EngineV1_2::MoveOrderer::Iterator::Iterator(Move* start, uint32 size, uint32 currentIndex) : start(start), size(size), idx(currentIndex) {}

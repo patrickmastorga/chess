@@ -7,8 +7,8 @@
 #define ENGINE_2_HEADER_FILE "EngineV1_2.h"
 #define ENGINE_2_CLASS_NAME EngineV1_2
 #define ENGINE_2_NAME "engine_v1.2"
-#define THINK_TIME 100ms
-#define TOTAL_MATCHES 1
+#define THINK_TIME 150ms
+#define TOTAL_MATCHES 50
 #define BOARD_SIZE 960
 #define LOG_FILE_NAME "games.txt"
 #define OUTPUT_FILE_NAME "results.txt"
